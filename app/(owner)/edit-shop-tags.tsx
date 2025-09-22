@@ -4,7 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { supabase } from '../../lib/supabase';
+import { useSession, useUser } from '@clerk/clerk-expo';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { ArrowLeft, Check } from 'lucide-react-native';
 
 // --- TYPES ---
@@ -18,6 +19,10 @@ type ShopLinks = {
 
 export default function EditShopTagsScreen() {
   const { shopId } = useLocalSearchParams<{ shopId: string }>();
+  const { session } = useSession();
+  const { user } = useUser();
+
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -98,7 +103,7 @@ export default function EditShopTagsScreen() {
   };
 
   const handleSaveChanges = async () => {
-    if (!shopId) return;
+    if (!shopId || !supabase) return;
     setIsSaving(true);
     try {
       const { error } = await supabase.rpc('update_shop_links', {
@@ -223,7 +228,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#DC2626',
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,

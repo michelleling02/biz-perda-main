@@ -17,8 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image as ImageIcon, X, Upload, Search } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { supabase } from '../../lib/supabase';
-import { Session } from '@supabase/supabase-js';
+import { useSession, useUser } from '@clerk/clerk-expo';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import 'react-native-url-polyfill/auto';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -35,6 +35,10 @@ type Item = { id: number; name: string; };
 const GOOGLE_MAPS_API_KEY = Constants.expoConfig?.extra?.googleApiKey;
 
 export default function AddShopScreen() {
+  const { session } = useSession();
+  const { user } = useUser();
+
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [formData, setFormData] = useState({
     name: '', description: '', address: '',
     phone: '', hours: '',
@@ -43,7 +47,6 @@ export default function AddShopScreen() {
   const [selectedImages, setSelectedImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
   const [mainImageUri, setMainImageUri] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
 
   const [allCategories, setAllCategories] = useState<Item[]>([]);
   const [allTags, setAllTags] = useState<Item[]>([]);
@@ -61,14 +64,34 @@ export default function AddShopScreen() {
   
   const [isAddressModalVisible, setIsAddressModalVisible] = useState(false);
 
+  // Effect 1: Create the session-aware Supabase client
+  useEffect(() => {
+    if (session) {
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      if (!supabaseUrl || !supabaseAnonKey) return;
+
+      const client = createClient(supabaseUrl, supabaseAnonKey, {
+        global: {
+          fetch: async (url, options = {}) => {
+            const token = await session.getToken({ template: 'supabase' });
+            const headers = new Headers(options.headers);
+            if (token) headers.set('Authorization', `Bearer ${token}`);
+            return fetch(url, { ...options, headers });
+          },
+        },
+      });
+      setSupabase(client);
+    }
+  }, [session]);
+
   useEffect(() => {
     if (!GOOGLE_MAPS_API_KEY) {
       Alert.alert("Configuration Error", "Google Maps API key is missing.");
     }
     const fetchInitialData = async () => {
+      if (!supabase) return;
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
         const [categoriesRes, tagsRes] = await Promise.all([
           supabase.from('categories').select('category_id, name'),
           supabase.from('tags').select('tag_id, tag_name'),
@@ -86,7 +109,7 @@ export default function AddShopScreen() {
       }
     };
     fetchInitialData();
-  }, []);
+  }, [supabase]);
 
   const updateField = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -226,6 +249,7 @@ export default function AddShopScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={['#32d74b', '#30d158']} style={styles.header}>
+      <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.header}>
         <Text style={styles.headerTitle}>Add New Restaurant</Text>
         <Text style={styles.headerSubtitle}>Share your delicious food with the community</Text>
       </LinearGradient>
@@ -368,7 +392,7 @@ export default function AddShopScreen() {
           </View>
 
           <TouchableOpacity style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]} onPress={submitShop} disabled={isSubmitting}>
-            <LinearGradient colors={['#32d74b', '#30d158']} style={styles.submitButtonGradient}>
+            <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.submitButtonGradient}>
               {isSubmitting ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (

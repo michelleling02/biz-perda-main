@@ -4,29 +4,54 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, router } from 'expo-router';
-import { supabase } from '../../lib/supabase';
+import { useSession, useUser } from '@clerk/clerk-expo';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { User, Camera } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import { decode } from 'base64-arraybuffer';
 
 export default function EditProfileScreen() {
+  const { session } = useSession();
+  const { user } = useUser();
+
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
   const [fullName, setFullName] = useState('');
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [newImage, setNewImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
 
+  // Effect 1: Create the session-aware Supabase client
+  React.useEffect(() => {
+    if (session) {
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      if (!supabaseUrl || !supabaseAnonKey) return;
+
+      const client = createClient(supabaseUrl, supabaseAnonKey, {
+        global: {
+          fetch: async (url, options = {}) => {
+            const token = await session.getToken({ template: 'supabase' });
+            const headers = new Headers(options.headers);
+            if (token) headers.set('Authorization', `Bearer ${token}`);
+            return fetch(url, { ...options, headers });
+          },
+        },
+      });
+      setSupabase(client);
+    }
+  }, [session]);
+
   // Fetch current profile data when the screen loads
   useFocusEffect(
     useCallback(() => {
       const loadProfile = async () => {
-        setIsLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          router.back();
+        if (!supabase || !user) {
+          setIsLoading(false);
           return;
         }
-        setUser(user);
+        setIsLoading(true);
 
         const { data, error } = await supabase
           .from('profiles')
@@ -44,7 +69,7 @@ export default function EditProfileScreen() {
         setIsLoading(false);
       };
       loadProfile();
-    }, [])
+    }, [supabase, user])
   );
 
   const handlePickImage = async () => {
@@ -81,17 +106,16 @@ export default function EditProfileScreen() {
         const fileName = `${user.id}_${new Date().getTime()}.${fileExt}`;
         const filePath = `${user.id}/${fileName}`;
 
-        // --- THIS IS THE FIX: Use FormData for the upload ---
-        const formData = new FormData();
-        formData.append('file', {
-          uri: newImage.uri,
-          name: fileName,
-          type: newImage.type ? `${newImage.type}/${fileExt}` : `image/${fileExt}`,
-        } as any);
+        // Use base64 upload method like in signup
+        const base64 = await FileSystem.readAsStringAsync(newImage.uri, { encoding: 'base64' });
+        const arrayBuffer = decode(base64);
 
         const { error: uploadError } = await supabase.storage
           .from('avatars')
-          .upload(filePath, formData, { upsert: true });
+          .upload(filePath, arrayBuffer, { 
+            contentType: newImage.type ? `${newImage.type}/${fileExt}` : `image/${fileExt}`,
+            upsert: true 
+          });
 
         if (uploadError) throw uploadError;
 
@@ -174,9 +198,12 @@ const styles = StyleSheet.create({
   avatarImage: { width: 120, height: 120, borderRadius: 60 },
   avatarPlaceholder: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#e2e8f0', justifyContent: 'center', alignItems: 'center' },
   cameraIcon: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#f97316', padding: 8, borderRadius: 16, borderWidth: 2, borderColor: '#ffffff' },
+  cameraIcon: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#DC2626', padding: 8, borderRadius: 16, borderWidth: 2, borderColor: '#ffffff' },
   label: { fontSize: 16, fontWeight: '500', color: '#334155', marginBottom: 8 },
   input: { backgroundColor: '#ffffff', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 8, fontSize: 16, borderWidth: 1, borderColor: '#cbd5e1', marginBottom: 20 },
   saveButton: { backgroundColor: '#f97316', padding: 16, borderRadius: 8, alignItems: 'center' },
+  saveButton: { backgroundColor: '#DC2626', padding: 16, borderRadius: 8, alignItems: 'center' },
   saveButtonDisabled: { backgroundColor: '#fdba74' },
+  saveButtonDisabled: { backgroundColor: '#FCA5A5' },
   saveButtonText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
 });

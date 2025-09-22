@@ -134,6 +134,7 @@ export default function FavoritesScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={['#FF6361', '#58508D']} style={styles.header}>
+      <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.header}>
         <View style={styles.headerContent}>
           <Heart size={28} color="#ffffff" fill="#ffffff" />
           <View style={styles.headerText}>
@@ -154,7 +155,7 @@ export default function FavoritesScreen() {
               <Text style={styles.emptyStateTitle}>No Favorites Yet</Text>
               <Text style={styles.emptyStateText}>Start exploring and tap the heart icon to save your favorite spots.</Text>
               <TouchableOpacity style={styles.exploreButton} onPress={() => router.push('/(customer)')}>
-                <LinearGradient colors={['#58508D', '#FF6361']} style={styles.exploreButtonGradient}>
+                <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.exploreButtonGradient}>
                   <Text style={styles.exploreButtonText}>Explore Restaurants</Text>
                 </LinearGradient>
               </TouchableOpacity>

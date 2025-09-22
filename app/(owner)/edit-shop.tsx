@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
-import { supabase } from '../../lib/supabase';
+import { useSession, useUser } from '@clerk/clerk-expo';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as ImagePicker from 'expo-image-picker';
 import {
   ArrowLeft,
@@ -64,10 +65,31 @@ export default function EditShopScreen() {
   // State for photos
   const [photos, setPhotos] = useState<ShopPhoto[]>([]);
 
+  // Effect 1: Create the session-aware Supabase client
+  React.useEffect(() => {
+    if (session) {
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      if (!supabaseUrl || !supabaseAnonKey) return;
+
+      const client = createClient(supabaseUrl, supabaseAnonKey, {
+        global: {
+          fetch: async (url, options = {}) => {
+            const token = await session.getToken({ template: 'supabase' });
+            const headers = new Headers(options.headers);
+            if (token) headers.set('Authorization', `Bearer ${token}`);
+            return fetch(url, { ...options, headers });
+          },
+        },
+      });
+      setSupabase(client);
+    }
+  }, [session]);
+
   useFocusEffect(
     useCallback(() => {
       const fetchShopData = async () => {
-        if (!shopId) {
+        if (!shopId || !supabase) {
           Alert.alert('Error', 'No shop ID provided.');
           router.back();
           return;
@@ -113,7 +135,7 @@ export default function EditShopScreen() {
       };
 
       fetchShopData();
-    }, [shopId])
+    }, [shopId, supabase])
   );
 
   const handleSaveChanges = async () => {
@@ -178,7 +200,7 @@ export default function EditShopScreen() {
         .insert({
           shop_id: shop.shop_id,
           photo_url: filePath,
-          uploader_user_id: (await supabase.auth.getUser()).data.user?.id,
+          uploader_user_id: user?.id,
           status: 'Approved',
         })
         .select()

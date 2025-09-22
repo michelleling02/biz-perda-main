@@ -4,7 +4,8 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Alert, TouchableOpacity, Image, FlatList, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
-import { supabase } from '../../lib/supabase';
+import { useSession, useUser } from '@clerk/clerk-expo';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { ArrowLeft, Star, User, MapPin, Phone, Clock, Eye, Heart, Tag, Folder } from 'lucide-react-native'; // Added Tag and Folder icons
 
 const { width } = Dimensions.get('window');
@@ -27,15 +28,40 @@ type ShopDetails = {
 
 export default function OwnerShopDetailsScreen() {
   const { shopId } = useLocalSearchParams<{ shopId: string }>();
+  const { session } = useSession();
+  const { user } = useUser();
+
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [shop, setShop] = useState<ShopDetails | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [photos, setPhotos] = useState<ShopPhoto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Effect 1: Create the session-aware Supabase client
+  React.useEffect(() => {
+    if (session) {
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      if (!supabaseUrl || !supabaseAnonKey) return;
+
+      const client = createClient(supabaseUrl, supabaseAnonKey, {
+        global: {
+          fetch: async (url, options = {}) => {
+            const token = await session.getToken({ template: 'supabase' });
+            const headers = new Headers(options.headers);
+            if (token) headers.set('Authorization', `Bearer ${token}`);
+            return fetch(url, { ...options, headers });
+          },
+        },
+      });
+      setSupabase(client);
+    }
+  }, [session]);
+
   useFocusEffect(
     useCallback(() => {
       async function fetchAllData() {
-        if (!shopId) {
+        if (!shopId || !supabase) {
           Alert.alert("Error", "No shop ID provided.");
           setIsLoading(false);
           return;
@@ -95,7 +121,7 @@ export default function OwnerShopDetailsScreen() {
         setReviews([]);
         setPhotos([]);
       };
-    }, [shopId])
+    }, [shopId, supabase])
   );
 
   const renderStars = (rating: number) => {

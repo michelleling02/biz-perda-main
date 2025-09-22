@@ -6,7 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { User, Store, Bell, MapPin, Star, Eye, LogOut, ChevronRight, Shield, CircleHelp as HelpCircle, Mail, CreditCard as Edit } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, router } from 'expo-router';
-import { supabase } from '../../lib/supabase';
+import { useSession, useUser } from '@clerk/clerk-expo';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { useClerk } from '@clerk/clerk-expo';
 
 type ProfileData = {
   name: string;
@@ -23,6 +25,11 @@ type ProfileStats = {
 };
 
 export default function OwnerProfileScreen() {
+  const { session } = useSession();
+  const { user } = useUser();
+  const { signOut } = useClerk();
+
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [stats, setStats] = useState<ProfileStats | null>(null);
@@ -86,9 +93,13 @@ export default function OwnerProfileScreen() {
         text: 'Logout',
         style: 'destructive',
         onPress: async () => {
-          const { error } = await supabase.auth.signOut();
-          if (error) Alert.alert('Error', 'Failed to logout: ' + error.message);
-          router.replace('/');
+          try {
+            await signOut();
+            router.replace('/');
+          } catch (e: any) {
+            console.error("Logout error", e);
+            Alert.alert("Logout Failed", e.message || "An error occurred.");
+          }
         },
       },
     ]);
@@ -105,6 +116,7 @@ export default function OwnerProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={['#f97316', '#ea580c']} style={styles.header}>
+      <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.header}>
         <View style={styles.profileHeader}>
           <View style={styles.avatar}>
             {profile?.profilePhotoUrl ? (
@@ -128,11 +140,14 @@ export default function OwnerProfileScreen() {
           <Text style={styles.sectionTitle}>Business Overview</Text>
           <View style={styles.statsGrid}>
             <StatCard icon={Store} title="Total Shops" value={stats?.total_shops ?? 0} color="#f97316" />
+            <StatCard icon={Store} title="Total Shops" value={stats?.total_shops ?? 0} color="#DC2626" />
             <StatCard icon={Eye} title="Total Views" value={(stats?.total_views ?? 0).toLocaleString()} color="#0891b2" />
+            <StatCard icon={Eye} title="Total Views" value={(stats?.total_views ?? 0).toLocaleString()} color="#3B4ECC" />
           </View>
           <View style={styles.statsGrid}>
             <StatCard icon={Star} title="Avg Rating" value={(stats?.avg_rating ?? 0).toFixed(1)} color="#fbbf24" />
             <StatCard icon={MapPin} title="Favorites" value={stats?.total_favorites ?? 0} color="#ef4444" />
+            <StatCard icon={MapPin} title="Favorites" value={stats?.total_favorites ?? 0} color="#DC2626" />
           </View>
         </View>
 
@@ -156,6 +171,7 @@ export default function OwnerProfileScreen() {
           <Text style={styles.sectionTitle}>Privacy & Support</Text>
           <View style={styles.menuContainer}>
             <MenuItem icon={MapPin} title="Location Services" rightContent={<Switch value={locationEnabled} onValueChange={setLocationEnabled} trackColor={{ false: '#d1d5db', true: '#f97316' }} />} />
+            <MenuItem icon={MapPin} title="Location Services" rightContent={<Switch value={locationEnabled} onValueChange={setLocationEnabled} trackColor={{ false: '#d1d5db', true: '#DC2626' }} />} />
             <MenuItem icon={Shield} title="Privacy Policy" onPress={() => console.log('Navigate to privacy policy')} />
             <MenuItem icon={HelpCircle} title="Help & Support" onPress={() => console.log('Navigate to help center')} />
           </View>

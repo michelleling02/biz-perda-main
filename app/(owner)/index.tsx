@@ -1,5 +1,3 @@
-// /app/(owner)/index.tsx
-
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -16,7 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Store, Eye, Heart, Star, TrendingUp, CheckCircle, Clock, Edit, BarChart3, ChefHat, AlertCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
-import { supabase } from '../../lib/supabase';
+import { useSession, useUser } from '@clerk/clerk-expo';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Define the TypeScript type for our shop data
 type ShopWithStats = {
@@ -36,6 +35,10 @@ type ShopWithStats = {
 };
 
 export default function OwnerDashboard() {
+  const { session } = useSession();
+  const { user } = useUser();
+
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [ownerProfile, setOwnerProfile] = useState<any>(null);
   const [ownedShops, setOwnedShops] = useState<ShopWithStats[]>([]);
   const [stats, setStats] = useState({ totalViews: 0, totalFavorites: 0, avgRating: 0 });
@@ -43,15 +46,34 @@ export default function OwnerDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchOwnerData = useCallback(async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        Alert.alert("Not logged in", "Redirecting to login.");
-        router.replace('/');
-        return;
-      }
+  // Effect 1: Create the session-aware Supabase client
+  React.useEffect(() => {
+    if (session) {
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      if (!supabaseUrl || !supabaseAnonKey) return;
 
+      const client = createClient(supabaseUrl, supabaseAnonKey, {
+        global: {
+          fetch: async (url, options = {}) => {
+            const token = await session.getToken({ template: 'supabase' });
+            const headers = new Headers(options.headers);
+            if (token) headers.set('Authorization', `Bearer ${token}`);
+            return fetch(url, { ...options, headers });
+          },
+        },
+      });
+      setSupabase(client);
+    }
+  }, [session]);
+
+  const fetchOwnerData = useCallback(async () => {
+    if (!supabase || !user) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id, name')
@@ -80,7 +102,7 @@ export default function OwnerDashboard() {
             .single();
           
           let displayUrl = 'https://placehold.co/400x200/e2e8f0/64748b?text=No+Image';
-          if (photoData?.photo_url ) {
+          if (photoData?.photo_url) {
             const { data: signedUrlData } = await supabase.storage
               .from('shop-images')
               .createSignedUrl(photoData.photo_url, 3600);
@@ -91,7 +113,6 @@ export default function OwnerDashboard() {
       );
       setOwnedShops(shopsWithPhotos);
 
-      // **FIXED**: Added 'number' type to the accumulator 'acc'
       const totalViews = shopsData.reduce((acc: number, shop: ShopWithStats) => acc + (shop.total_views || 0), 0);
       const totalFavorites = shopsData.reduce((acc: number, shop: ShopWithStats) => acc + (shop.total_favorites || 0), 0);
       const shopsWithRatings = shopsData.filter((shop: ShopWithStats) => shop.average_rating !== null);
@@ -110,7 +131,7 @@ export default function OwnerDashboard() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [supabase, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -163,7 +184,6 @@ export default function OwnerDashboard() {
     const shopAvgRating = rating ? Number(rating).toFixed(1) : 'N/A';
 
     return (
-      // CORRECTED NAVIGATION: This now points to the new owner-specific details screen.
       <TouchableOpacity 
         style={styles.shopCard}
         onPress={() => router.push({ pathname: '/(owner)/shop-details', params: { shopId: shop.shop_id } })}
@@ -189,7 +209,7 @@ export default function OwnerDashboard() {
               router.push({ pathname: '/(owner)/edit-shop', params: { shopId: shop.shop_id } });
             }}
           >
-            <Edit size={16} color="#f97316" />
+            <Edit size={16} color="#DC2626" />
             <Text style={styles.editButtonText}>Edit Shop</Text>
           </TouchableOpacity>
         </View>
@@ -198,12 +218,12 @@ export default function OwnerDashboard() {
   };
 
   if (isLoading) {
-    return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color="#58508D" style={{ flex: 1 }} /></SafeAreaView>;
+    return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color="#DC2626" style={{ flex: 1 }} /></SafeAreaView>;
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#58508D', '#FF6361']} style={styles.header}>
+      <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.header}>
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeText}>Welcome back,</Text>
           <Text style={styles.ownerName}>{ownerProfile?.name || 'Owner'}</Text>
@@ -215,12 +235,12 @@ export default function OwnerDashboard() {
         <View style={styles.statsContainer}>
           <Text style={styles.sectionTitle}>Performance Overview</Text>
           <View style={styles.statsGrid}>
-            <StatCard icon={ChefHat} title="Restaurants" value={ownedShops.length} color="#FF6361" subtitle="Total listings" />
-            <StatCard icon={Eye} title="Total Views" value={stats.totalViews.toLocaleString()} color="#58508D" subtitle="All time" />
+            <StatCard icon={ChefHat} title="Restaurants" value={ownedShops.length} color="#DC2626" subtitle="Total listings" />
+            <StatCard icon={Eye} title="Total Views" value={stats.totalViews.toLocaleString()} color="#3B4ECC" subtitle="All time" />
           </View>
           <View style={styles.statsGrid}>
-            <StatCard icon={Heart} title="Total Favorites" value={stats.totalFavorites} color="#FF6361" subtitle="Total saves" />
-            <StatCard icon={Star} title="Avg. Rating" value={stats.avgRating.toFixed(1)} color="#58508D" subtitle="Across all shops" />
+            <StatCard icon={Heart} title="Total Favorites" value={stats.totalFavorites} color="#DC2626" subtitle="Total saves" />
+            <StatCard icon={Star} title="Avg. Rating" value={stats.avgRating.toFixed(1)} color="#3B4ECC" subtitle="Across all shops" />
           </View>
         </View>
 
@@ -228,10 +248,10 @@ export default function OwnerDashboard() {
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(owner)/add-shop')}>
-              <LinearGradient colors={['#58508D', '#FF6361']} style={styles.actionCardGradient}><ChefHat size={24} color="#ffffff" /><Text style={styles.actionText}>Add New Restaurant</Text></LinearGradient>
+              <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.actionCardGradient}><ChefHat size={24} color="#ffffff" /><Text style={styles.actionText}>Add New Restaurant</Text></LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(owner)/analytics')}>
-              <LinearGradient colors={['#FF6361', '#58508D']} style={styles.actionCardGradient}><TrendingUp size={24} color="#ffffff" /><Text style={styles.actionText}>View Analytics</Text></LinearGradient>
+              <LinearGradient colors={['#3B4ECC', '#DC2626']} style={styles.actionCardGradient}><TrendingUp size={24} color="#ffffff" /><Text style={styles.actionText}>View Analytics</Text></LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
@@ -281,7 +301,7 @@ const styles = StyleSheet.create({
   shopStat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   shopStatValue: { fontSize: 12, color: '#9B9B9B', fontWeight: '500' },
   lastUpdated: { fontSize: 12, color: '#9B9B9B', marginBottom: 12, fontStyle: 'italic' },
-  editButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF7ED', paddingVertical: 8, borderRadius: 8, gap: 6, borderWidth: 1, borderColor: '#f97316' },
-  editButtonText: { color: '#f97316', fontSize: 14, fontWeight: '600' },
+  editButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FEE2E2', paddingVertical: 8, borderRadius: 8, gap: 6, borderWidth: 1, borderColor: '#DC2626' },
+  editButtonText: { color: '#DC2626', fontSize: 14, fontWeight: '600' },
   emptyText: { textAlign: 'center', color: '#64748b', marginTop: 20, fontStyle: 'italic', paddingHorizontal: 20 },
 });

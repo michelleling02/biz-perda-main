@@ -48,7 +48,7 @@ export default function CategoriesScreen() {
         </View>
         <Text style={[
           styles.categoryName,
-          isSelected && { color: '#FF6361', fontWeight: '600' }
+          isSelected && { color: '#DC2626', fontWeight: '600' }
         ]}>
           {category.name}
         </Text>

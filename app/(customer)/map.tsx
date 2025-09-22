@@ -112,6 +112,7 @@ export default function MapScreen() {
       {/* The MapView and the Callout are now siblings, not parent/child */}
       <View style={{ flex: 1 }}>
         <LinearGradient colors={['#58508D', '#FF6361']} style={styles.header}>
+        <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.header}>
           <Text style={styles.headerTitle}>Food Locations</Text>
           <Text style={styles.headerSubtitle}>Tap markers to view details</Text>
         </LinearGradient>

@@ -128,6 +128,7 @@ export default function CustomerHomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={['#4ECDC4', '#44A08D', '#F7931E', '#FF6B35']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
+      <LinearGradient colors={['#DC2626', '#3B4ECC']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
         <View style={styles.headerContent}>
             <View style={styles.logoContainer}><View style={styles.logo}><Grid3x3 size={24} color="#2F4858" /></View><View><Text style={styles.headerTitle}>BIZ@PERDA</Text><Text style={styles.headerSubtitle}>Discover & save Penang shops</Text></View></View>
             <View style={styles.headerActions}>
@@ -181,6 +182,7 @@ const styles = StyleSheet.create({
     filterTitle: { fontSize: 16, fontWeight: '600', color: '#2F4858', marginBottom: 12 },
     filterButton: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderRadius: 16, paddingVertical: 10, paddingHorizontal: 16, borderWidth: 1, borderColor: '#F0F0F0', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1, marginRight: 12 },
     filterButtonSelected: { backgroundColor: '#FF6361', borderColor: '#FF6361', shadowColor: '#FF6361', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 8 },
+    filterButtonSelected: { backgroundColor: '#DC2626', borderColor: '#DC2626', shadowColor: '#DC2626', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 8 },
     filterButtonText: { fontSize: 14, color: '#2F4858', fontWeight: '500' },
     filterButtonTextSelected: { color: '#FFFFFF', fontWeight: '600' },
     shopsContainer: { paddingHorizontal: 20, gap: 16 },

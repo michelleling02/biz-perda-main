@@ -85,6 +85,7 @@ const styles = StyleSheet.create({
   formContainer: { flex: 1, justifyContent: 'center', padding: 20 },
   input: { borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 16 },
   button: { backgroundColor: '#58508D', padding: 16, borderRadius: 8, alignItems: 'center' },
+  button: { backgroundColor: '#DC2626', padding: 16, borderRadius: 8, alignItems: 'center' },
   buttonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
   linkContainer: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
   link: { color: '#58508D', fontWeight: 'bold' },

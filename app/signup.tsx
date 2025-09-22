@@ -4,7 +4,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { UserPlus, ArrowLeft, User, Store, Phone, Camera } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-// --- FIX: Import FileSystem, just like in edit-profile.tsx ---
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base-64';
 import { useSignUp, useAuth } from '@clerk/clerk-expo';
@@ -100,19 +99,22 @@ export default function SignUpScreen() {
       let publicPhotoUrl: string | null = null;
       if (avatarUri) {
         try {
-          // --- THIS IS THE FIX: Use the same logic as edit-profile.tsx ---
           const base64 = await FileSystem.readAsStringAsync(avatarUri, { encoding: 'base64' });
           const filePath = `${completeSignUp.createdUserId}/${new Date().getTime()}.png`;
-          const { data, error: uploadError } = await supabase.storage
+          
+          const { error: uploadError } = await supabase.storage
             .from('avatars')
-            .upload(filePath, decode(base64), { contentType: 'image/png' });
-          // --- END OF FIX ---
+            .upload(filePath, decode(base64), { 
+              contentType: 'image/png',
+              upsert: true 
+            });
 
           if (uploadError) throw uploadError;
           
-          const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(data.path);
+          const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
           publicPhotoUrl = urlData.publicUrl;
         } catch (uploadError: any) {
+          console.error("Avatar upload error:", uploadError);
           Alert.alert("Upload Failed", "Your account was created, but we couldn't upload your profile picture.");
         }
       }
@@ -152,7 +154,7 @@ export default function SignUpScreen() {
       <StatusBar barStyle="light-content" />
       
       <LinearGradient
-        colors={['#58508D', '#FF6361']}
+        colors={['#DC2626', '#3B4ECC']}
         style={styles.headerGradient}
       >
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -193,7 +195,7 @@ export default function SignUpScreen() {
               <View style={styles.inputContainer}><Text style={styles.inputLabel}>Phone Number</Text><View style={styles.phoneInputWrapper}><Phone size={20} color="#94a3b8" style={styles.phoneInputIcon} /><TextInput style={styles.phoneInput} value={phoneNumber} onChangeText={setPhoneNumber} placeholder="e.g., 0123456789" keyboardType="phone-pad" /></View></View>
               <View style={styles.inputContainer}><Text style={styles.inputLabel}>Password *</Text><TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="Create a strong password" secureTextEntry /></View>
               <TouchableOpacity style={[styles.actionButton, isLoading && styles.actionButtonDisabled]} onPress={onSignUpPress} disabled={isLoading}>
-                <LinearGradient colors={['#58508D', '#FF6361']} style={styles.actionButtonGradient}>
+                <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.actionButtonGradient}>
                   {isLoading ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.actionButtonText}>Continue</Text>}
                 </LinearGradient>
               </TouchableOpacity>
@@ -234,8 +236,9 @@ const styles = StyleSheet.create({
   roleSelector: { flexDirection: 'row', gap: 10 },
   roleButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, gap: 8 },
   roleButtonSelected: { backgroundColor: '#F3E8FF', borderColor: '#58508D' },
+  roleButtonSelected: { backgroundColor: '#FEE2E2', borderColor: '#DC2626' },
   roleButtonText: { fontSize: 16, color: '#64748b', fontWeight: '600' },
-  roleButtonTextSelected: { color: '#58508D' },
+  roleButtonTextSelected: { color: '#DC2626' },
   phoneInputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 16 },
   phoneInputIcon: { marginRight: 10 },
   phoneInput: { flex: 1, paddingVertical: 14, fontSize: 16, color: '#1E293B' },
@@ -244,6 +247,7 @@ const styles = StyleSheet.create({
   avatarImage: { width: 120, height: 120, borderRadius: 60, borderWidth: 3, borderColor: '#FFFFFF' },
   avatarPlaceholder: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#FFFFFF' },
   avatarEditBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#58508D', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 2, borderColor: '#FFFFFF' },
+  avatarEditBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#DC2626', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 2, borderColor: '#FFFFFF' },
   avatarEditText: { color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' },
   infoText: { textAlign: 'center', marginBottom: 20, fontSize: 18, color: '#2F4858' },
 });

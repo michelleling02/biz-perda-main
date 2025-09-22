@@ -4,10 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { User, Settings, Bell, MapPin, Heart, Star, LogOut, ChevronRight, Shield, CircleHelp as HelpCircle, Mail } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, router } from 'expo-router';
-// --- THIS IS THE FIX: Import useClerk as you correctly stated ---
 import { useClerk, useUser, useSession } from '@clerk/clerk-expo';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import * as Updates from 'expo-updates';
 
 type CustomerProfile = {
   name: string;
@@ -24,7 +22,6 @@ type CustomerStats = {
 
 export default function ProfileScreen() {
   const { user } = useUser();
-  // --- THIS IS THE FIX: Get signOut from useClerk ---
   const { signOut } = useClerk();
   const { session } = useSession();
 
@@ -105,7 +102,6 @@ export default function ProfileScreen() {
 
   useFocusEffect(useCallback(() => { fetchProfileData(); }, [fetchProfileData]));
 
-  // --- THIS IS THE FIX: A simple, clean logout handler ---
   const handleLogout = () => {
     Alert.alert(
       'Logout',
@@ -115,11 +111,10 @@ export default function ProfileScreen() {
         {
           text: 'Logout',
           style: 'destructive',
-          // The onPress now calls signOut directly and then reloads.
           onPress: async () => {
             try {
               await signOut();
-              await Updates.reloadAsync();
+              router.replace('/');
             } catch (e: any) {
               console.error("Logout error", e);
               Alert.alert("Logout Failed", e.message || "An error occurred.");
@@ -129,7 +124,6 @@ export default function ProfileScreen() {
       ]
     );
   };
-  // --- END OF FIX ---
 
   if (isLoading) {
     return <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}><ActivityIndicator size="large" color="#0891b2" /></SafeAreaView>;
@@ -138,6 +132,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={['#0891b2', '#0369a1']} style={styles.header}>
+      <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.header}>
         <View style={styles.profileHeader}>
           <View style={styles.avatar}>
             {profile?.profilePhotoUrl ? (

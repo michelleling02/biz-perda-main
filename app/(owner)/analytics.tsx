@@ -156,7 +156,7 @@ export default function AnalyticsScreen() {
           <View style={styles.insightsSection}>
             <Text style={styles.sectionTitle}>Insights & Tips</Text>
             <View style={styles.insightCard}><LinearGradient colors={['#10b981', '#059669']} style={styles.insightGradient}><Text style={styles.insightTitle}>📈 Stay Consistent</Text><Text style={styles.insightText}>Keep your shop information and photos updated to attract more customers and improve your visibility.</Text></LinearGradient></View>
-            <View style={styles.insightCard}><LinearGradient colors={['#f59e0b', '#d97706']} style={styles.insightGradient}><Text style={styles.insightTitle}>💡 Engage Your Customers</Text><Text style={styles.insightText}>Responding to reviews and running promotions on busy days can significantly boost customer loyalty.</Text></LinearGradient></View>
+            <View style={styles.insightCard}><LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.insightGradient}><Text style={styles.insightTitle}>💡 Engage Your Customers</Text><Text style={styles.insightText}>Responding to reviews and running promotions on busy days can significantly boost customer loyalty.</Text></LinearGradient></View>
           </View>
           <View style={styles.bottomSpacing} />
         </ScrollView>
