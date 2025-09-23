@@ -38,10 +38,6 @@ export default function NotificationsScreen() {
   const { user } = useUser();
 
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
-  const { session } = useSession();
-  const { user } = useUser();
-
-  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -58,31 +54,9 @@ export default function NotificationsScreen() {
           fetch: async (url, options = {}) => {
             const token = await session.getToken({ template: 'supabase' });
             const headers = new Headers(options.headers);
-  // Effect 1: Create the session-aware Supabase client
-  React.useEffect(() => {
-    if (session) {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      if (!supabaseUrl || !supabaseAnonKey) return;
-
-      const client = createClient(supabaseUrl, supabaseAnonKey, {
-        global: {
-          fetch: async (url, options = {}) => {
-            const token = await session.getToken({ template: 'supabase' });
-            const headers = new Headers(options.headers);
-  // Effect 1: Create the session-aware Supabase client
-  React.useEffect(() => {
-    if (session) {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      if (!supabaseUrl || !supabaseAnonKey) return;
-
-      const client = createClient(supabaseUrl, supabaseAnonKey, {
-        global: {
-          fetch: async (url, options = {}) => {
-            const token = await session.getToken({ template: 'supabase' });
-            const headers = new Headers(options.headers);
-            if (token) headers.set('Authorization', `Bearer ${token}`);
+            if (token) {
+              headers.set('Authorization', `Bearer ${token}`);
+            }
             return fetch(url, { ...options, headers });
           },
         },
@@ -214,7 +188,6 @@ export default function NotificationsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#8b5cf6', '#7c3aed']} style={styles.header}>
       <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.header}>
         <View style={styles.headerContent}>
           <Bell size={24} color="#ffffff" />
@@ -278,7 +251,6 @@ const styles = StyleSheet.create({
   notificationTitleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 },
   notificationTitle: { fontSize: 16, fontWeight: '600', color: '#64748b', flex: 1 },
   notificationTitleUnread: { color: '#1e293b' },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#8b5cf6' },
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#DC2626' },
   notificationMessage: { fontSize: 14, color: '#64748b', lineHeight: 20, marginBottom: 8 },
   notificationTime: { fontSize: 12, color: '#94a3b8' },
