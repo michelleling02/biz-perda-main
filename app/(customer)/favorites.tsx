@@ -54,7 +54,9 @@ export default function NotificationsScreen() {
           fetch: async (url, options = {}) => {
             const token = await session.getToken({ template: 'supabase' });
             const headers = new Headers(options.headers);
-            if (token) headers.set('Authorization', `Bearer ${token}`);
+            if (token) {
+              headers.set('Authorization', `Bearer ${token}`);
+            }
             return fetch(url, { ...options, headers });
           },
         },
@@ -64,7 +66,7 @@ export default function NotificationsScreen() {
   }, [session]);
 
   const fetchNotifications = useCallback(async () => {
-    if (!supabase || !user) {
+    if (!user) {
       setIsLoading(false);
       return;
     }
@@ -115,7 +117,7 @@ export default function NotificationsScreen() {
     );
     // Update the database in the background
     await supabase
-      ?.from('notifications')
+      .from('notifications')
       .update({ is_read: true })
       .eq('notification_id', id);
   };
