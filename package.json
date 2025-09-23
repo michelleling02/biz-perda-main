@@ -4,10 +4,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "EXPO_NO_TELEMETRY=1 expo start",
-    "start": "expo start",
-    "build:web": "expo export --platform web",
-    "lint": "expo lint"
+    "dev": "EXPO_NO_TELEMETRY=1 npx expo start",
+    "start": "npx expo start",
+    "build:web": "npx expo export --platform web",
+    "lint": "npx expo lint"
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.15.0",
