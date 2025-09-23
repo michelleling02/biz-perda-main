@@ -6,7 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Bell, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Clock, Star, Eye, Heart, Trash2, BookMarked as MarkAsRead } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, router } from 'expo-router';
-import { supabase } from '../../lib/supabase';
+import { useSession, useUser } from '@clerk/clerk-expo';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // --- TYPE DEFINITION FOR OUR LIVE NOTIFICATION DATA ---
 type Notification = {
@@ -33,6 +34,10 @@ const getNotificationStyle = (title: string) => {
 };
 
 export default function NotificationsScreen() {
+  const { session } = useSession();
+  const { user } = useUser();
+
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const { session } = useSession();
   const { user } = useUser();
 
