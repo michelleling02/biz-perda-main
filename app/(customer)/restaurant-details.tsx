@@ -75,12 +75,13 @@ export default function RestaurantDetailsScreen() {
       // --- THIS IS THE FIX ---
       // If the user is logged in, call the RPC with BOTH parameters.
       if (user) {
-        supabase.rpc('log_shop_view', { 
+        const viewResult = await supabase.rpc('log_shop_view', { 
           shop_id_to_log: Number(restaurantId),
           user_id_to_log: user.id // Pass the Clerk user ID here
-        }).then(({ error }) => {
-          if (error) console.error('Failed to log shop view:', error);
         });
+        if (viewResult.error) {
+          console.error('Failed to log shop view:', viewResult.error);
+        }
       }
 
       // The rest of the function remains the same...
