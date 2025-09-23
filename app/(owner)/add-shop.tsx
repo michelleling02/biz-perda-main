@@ -54,18 +54,6 @@ export default function NotificationsScreen() {
           fetch: async (url, options = {}) => {
             const token = await session.getToken({ template: 'supabase' });
             const headers = new Headers(options.headers);
-  // Effect 1: Create the session-aware Supabase client
-  React.useEffect(() => {
-    if (session) {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      if (!supabaseUrl || !supabaseAnonKey) return;
-
-      const client = createClient(supabaseUrl, supabaseAnonKey, {
-        global: {
-          fetch: async (url, options = {}) => {
-            const token = await session.getToken({ template: 'supabase' });
-            const headers = new Headers(options.headers);
             if (token) headers.set('Authorization', `Bearer ${token}`);
             return fetch(url, { ...options, headers });
           },
