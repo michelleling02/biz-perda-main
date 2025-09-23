@@ -113,7 +113,6 @@ export default function NotificationsScreen() {
         notif.notification_id === id ? { ...notif, is_read: true } : notif
       )
     );
-    // Update the database in the background
     await supabase
       ?.from('notifications')
       .update({ is_read: true })
@@ -121,13 +120,13 @@ export default function NotificationsScreen() {
   };
 
   const markAllAsRead = async () => {
-    if (!supabase || !user) return;
+    if (!user) return;
 
     setNotifications(prev =>
       prev.map(notif => ({ ...notif, is_read: true }))
     );
     await supabase
-      .from('notifications')
+      ?.from('notifications')
       .update({ is_read: true })
       .eq('recipient_user_id', user.id)
       .eq('is_read', false);
