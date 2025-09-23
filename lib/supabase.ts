@@ -13,4 +13,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: false,
   },
-} );
+  global: {
+    headers: {
+      'X-Client-Info': 'supabase-js-react-native',
+    },
+  },
+});
