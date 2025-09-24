@@ -1,0 +1,565 @@
+✅ Functions to Keep (No Changes Needed)
+These functions are already well-defined and do not conflict with the new architecture.
+check_and_create_milestone_notifications
+create_user_profile_and_role
+get_all_approved_shops_with_details
+get_customer_profile_stats
+get_daily_engagement_stats
+get_owner_profile_stats
+get_owner_shops_with_stats
+get_shop_details_with_relations
+search_shops_by_link
+update_shops_fts
+✏️ Functions to Fix
+These functions are essential but contain outdated logic (like using UUIDs) that needs to be corrected.
+create_shop_with_links: Still uses auth.uid() without casting to text.
+get_daily_view_stats: Still uses UUID for the p_owner_id parameter.
+get_owner_analytics_overview: Still uses UUID for the p_owner_id parameter.
+get_single_shop_details: Needs to be updated to use the corrected views.
+is_admin: The logic is flawed because it references a role_id that doesn't exist in your userroles table.
+search_shops: Returns shop_id as a UUID, which should be TEXT.
+update_shop_links: The authorization check compares a UUID to TEXT.
+❌ Functions to Delete
+These functions are either redundant, part of the old (and now incorrect) auth.users trigger system, or are simply obsolete. They cause conflicts and must be removed.
+assign_user_roles: Redundant. This logic is correctly handled by create_user_profile_and_role.
+create_profile_for_user: Obsolete. This is from the old trigger system. Your app should only call create_user_profile_and_role.
+get_owner_dashboard_kpis: Redundant. The get_owner_profile_stats function provides the same data.
+get_owner_engagement_chart: Redundant. This is a duplicate of get_daily_engagement_stats.
+get_owner_shop_views_chart: Redundant. This is a duplicate of get_daily_view_stats.
+is_owner: The logic is flawed and this check is better handled directly in RLS policies.
+log_shop_view (both versions): Both are flawed. We will replace them with a single, correct version.
+
+assign_user_roles
+BEGIN
+  INSERT INTO user_roles (user_id, role)
+  VALUES (p_user_id, p_role);
+END;
+
+check_and_create_milestone_notifications
+DECLARE
+    shop_stat RECORD;
+    milestone_views INT[] := ARRAY[100, 500, 1000, 5000, 10000];
+    milestone_favs INT[] := ARRAY[10, 50, 100, 250, 500];
+    m_value INT;
+BEGIN
+    -- Loop through every shop's performance stats
+    -- === THIS IS THE FIX: JOIN with the shops table to get the name ===
+    FOR shop_stat IN
+        SELECT
+            sps.shop_id,
+            sps.owner_user_id,
+            s.name, -- Now we get the name from the shops table
+            sps.total_views,
+            sps.total_favorites
+        FROM
+            public.shop_performance_stats sps
+        JOIN
+            public.shops s ON sps.shop_id = s.shop_id
+        WHERE
+            sps.owner_user_id IS NOT NULL
+    LOOP
+        -- The rest of the function logic remains the same, as it now has access to shop_stat.name
+        
+        -- Check for view milestones
+        FOREACH m_value IN ARRAY milestone_views
+        LOOP
+            IF shop_stat.total_views >= m_value THEN
+                IF NOT EXISTS (SELECT 1 FROM public.shopmilestones WHERE shop_id = shop_stat.shop_id AND milestone_type = 'views' AND milestone_value = m_value) THEN
+                    INSERT INTO public.notifications (recipient_user_id, title, message)
+                    VALUES (shop_stat.owner_user_id, '🎉 Milestone Reached!', 'Congratulations! Your shop "' || shop_stat.name || '" has reached ' || m_value || ' total views!');
+
+                    INSERT INTO public.shopmilestones (shop_id, milestone_type, milestone_value)
+                    VALUES (shop_stat.shop_id, 'views', m_value);
+                END IF;
+            END IF;
+        END LOOP;
+
+        -- Check for favorite milestones
+        FOREACH m_value IN ARRAY milestone_favs
+        LOOP
+            IF shop_stat.total_favorites >= m_value THEN
+                IF NOT EXISTS (SELECT 1 FROM public.shopmilestones WHERE shop_id = shop_stat.shop_id AND milestone_type = 'favorites' AND milestone_value = m_value) THEN
+                    INSERT INTO public.notifications (recipient_user_id, title, message)
+                    VALUES (shop_stat.owner_user_id, '💖 Milestone Reached!', 'Congratulations! Your shop "' || shop_stat.name || '" has been favorited ' || m_value || ' times!');
+
+                    INSERT INTO public.shopmilestones (shop_id, milestone_type, milestone_value)
+                    VALUES (shop_stat.shop_id, 'favorites', m_value);
+                END IF;
+            END IF;
+        END LOOP;
+    END LOOP;
+END;
+
+create_profile_for_user
+DECLARE
+  clerk_id TEXT;
+  clerk_name TEXT;
+  clerk_phone TEXT;
+BEGIN
+  -- Get the user ID and metadata from the JWT
+  clerk_id := requesting_user_id();
+
+  -- If there is no user ID in the token, do nothing.
+  IF clerk_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  -- Check if the profile already exists
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = clerk_id) THEN
+    -- If it does not exist, get the metadata and insert.
+    clerk_name := current_setting('request.jwt.claims', true)::jsonb->'unsafe_metadata'->>'fullName';
+    clerk_phone := current_setting('request.jwt.claims', true)::jsonb->'unsafe_metadata'->>'phoneNumber';
+
+    INSERT INTO public.profiles (id, name, phone_number, profile_photo_url)
+    VALUES (
+      clerk_id,
+      COALESCE(clerk_name, 'New User'),
+      clerk_phone,
+      avatar_url -- Use the URL passed as an argument
+    );
+  END IF;
+END;
+
+create_shop_with_links
+CREATE OR REPLACE FUNCTION public.create_shop_with_links(p_name text, p_description text, p_address text, p_phone_number text, p_operating_hours text, p_latitude double precision, p_longitude double precision, p_category_ids integer[], p_tag_ids integer[])
+RETURNS bigint LANGUAGE plpgsql AS $$
+DECLARE
+    new_shop_id BIGINT;
+BEGIN
+    INSERT INTO public.shops (name, description, address, phone_number, operating_hours, location, owner_user_id, status)
+    VALUES (p_name, p_description, p_address, p_phone_number, p_operating_hours, ST_MakePoint(p_longitude, p_latitude)::geography, auth.uid()::text, 'Pending')
+    RETURNING shop_id INTO new_shop_id;
+
+    IF array_length(p_category_ids, 1) > 0 THEN
+        INSERT INTO public.shopcategorylink (shop_id, category_id)
+        SELECT new_shop_id, unnest(p_category_ids);
+    END IF;
+
+    IF array_length(p_tag_ids, 1) > 0 THEN
+        INSERT INTO public.shoptaglink (shop_id, tag_id)
+        SELECT new_shop_id, unnest(p_tag_ids);
+    END IF;
+
+    RETURN new_shop_id;
+END;
+$$;
+
+create_user_profile_and_role
+-- This script replaces the user creation function with the final, correct version.
+
+CREATE OR REPLACE FUNCTION public.create_user_profile_and_role(
+  p_user_id text,
+  p_full_name text,
+  p_email text,
+  p_avatar_url text,
+  p_role_name text DEFAULT 'Customer' -- The app will pass 'Customer' or 'Owner'
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER AS $$
+DECLARE
+  v_role_id bigint; -- Variable to hold the numeric role ID
+BEGIN
+  -- Step 1: Look up the role_id from the roles table based on the name provided.
+  SELECT role_id INTO v_role_id FROM public.roles WHERE role_name = p_role_name;
+
+  -- Step 2: If no role was found, raise an error.
+  IF v_role_id IS NULL THEN
+    RAISE EXCEPTION 'Invalid role name provided: %', p_role_name;
+  END IF;
+
+  -- Step 3: Insert into the profiles table (this part was already correct).
+  INSERT INTO public.profiles (id, name, email, profile_photo_url)
+  VALUES (p_user_id, p_full_name, p_email, p_avatar_url);
+
+  -- Step 4: Insert into the user_roles table using the numeric v_role_id we found.
+  INSERT INTO public.userroles (user_id, role_id)
+  VALUES (p_user_id, v_role_id);
+END;
+$$;
+
+get_all_approved_shops_with_details
+    SELECT
+        s.shop_id,
+        s.name,
+        s.description,
+        -- Get the main photo URL
+        (SELECT sp.photo_url FROM public.shopphotos sp WHERE sp.shop_id = s.shop_id AND sp.type = 'Main' LIMIT 1) AS main_photo_path,
+        -- Convert location to text
+        ST_AsText(s.location) AS location_text,
+        -- Calculate average rating, handling cases with no reviews (returns 0)
+        COALESCE((SELECT AVG(r.rating) FROM public.reviews r WHERE r.shop_id = s.shop_id), 0) AS avg_rating,
+        -- Count reviews
+        (SELECT COUNT(*) FROM public.reviews r WHERE r.shop_id = s.shop_id) AS review_count,
+        -- Aggregate category names into an array
+        COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{}') AS categories,
+        -- Aggregate tag names into an array
+        COALESCE(array_agg(DISTINCT t.tag_name) FILTER (WHERE t.tag_name IS NOT NULL), '{}') AS tags
+    FROM
+        public.shops s
+    LEFT JOIN
+        public.shopcategorylink scl ON s.shop_id = scl.shop_id
+    LEFT JOIN
+        public.categories c ON scl.category_id = c.category_id
+    LEFT JOIN
+        public.shoptaglink stl ON s.shop_id = stl.shop_id
+    LEFT JOIN
+        public.tags t ON stl.tag_id = t.tag_id
+    WHERE
+        s.status = 'Approved'
+    GROUP BY
+        s.shop_id;
+
+get_customer_profile_stats
+  SELECT
+    (SELECT COUNT(*) FROM shopfavourites WHERE user_id = p_customer_id) AS total_favorites,
+    (SELECT COUNT(*) FROM reviews WHERE user_id = p_customer_id) AS total_reviews,
+    (SELECT COUNT(DISTINCT shop_id) FROM shopviews WHERE user_id = p_customer_id) AS total_visited;
+
+get_daily_engagement_stats
+BEGIN
+    RETURN QUERY
+    SELECT
+        to_char(d.period_start, 'YYYY-MM-DD') AS period_label,
+        COUNT(DISTINCT sv.view_id) AS total_views,
+        COUNT(DISTINCT sf.user_id) AS total_favorites,
+        COUNT(DISTINCT r.review_id) AS total_reviews
+    FROM
+        generate_series(p_start_date, p_end_date, '1 day'::interval) AS d(period_start)
+    LEFT JOIN shops s ON s.owner_user_id = p_owner_id
+    LEFT JOIN shopviews sv ON sv.shop_id = s.shop_id AND sv.viewed_at::date = d.period_start
+    LEFT JOIN shopfavourites sf ON sf.shop_id = s.shop_id AND sf.created_at::date = d.period_start
+    LEFT JOIN reviews r ON r.shop_id = s.shop_id AND r.created_at::date = d.period_start
+    GROUP BY d.period_start
+    ORDER BY d.period_start;
+END;
+
+get_daily_engagement_stats (still using UUID)
+BEGIN
+    RETURN QUERY
+    WITH date_series AS (
+        SELECT generate_series(
+            date_trunc(p_group_by_period, p_start_date),
+            p_end_date,
+            ('1 ' || p_group_by_period)::interval
+        )::date AS period_start
+    ),
+    engagement_data AS (
+        -- This part for reviews is correct
+        SELECT r.created_at::date AS event_date, 'review' AS type FROM public.reviews r JOIN public.shops s ON r.shop_id = s.shop_id WHERE s.owner_user_id = p_owner_id AND r.created_at::date BETWEEN p_start_date AND p_end_date
+        
+        UNION ALL
+        
+        -- === THIS IS THE ONLY CHANGE THAT MATTERS ===
+        -- The table name is corrected to 'shopfavourites' (WITH a 'u')
+        SELECT sf.created_at::date, 'favorite' FROM public.shopfavourites sf JOIN public.shops s ON sf.shop_id = s.shop_id WHERE s.owner_user_id = p_owner_id AND sf.created_at::date BETWEEN p_start_date AND p_end_date
+        
+        UNION ALL
+        
+        -- This part for views is correct
+        SELECT sv.viewed_at::date, 'view' FROM public.shopviews sv JOIN public.shops s ON sv.shop_id = s.shop_id WHERE s.owner_user_id = p_owner_id AND sv.viewed_at::date BETWEEN p_start_date AND p_end_date
+    )
+    SELECT
+        CASE
+            WHEN p_group_by_period = 'day' THEN to_char(ds.period_start, 'Dy')
+            WHEN p_group_by_period = 'week' THEN 'W' || to_char(ds.period_start, 'WW')
+            WHEN p_group_by_period = 'month' THEN to_char(ds.period_start, 'Mon')
+            ELSE to_char(ds.period_start, 'Dy')
+        END AS period_label,
+        COUNT(ed.type) FILTER (WHERE ed.type = 'view') AS total_views,
+        COUNT(ed.type) FILTER (WHERE ed.type = 'favorite') AS total_favorites,
+        COUNT(ed.type) FILTER (WHERE ed.type = 'review') AS total_reviews
+    FROM date_series ds
+    LEFT JOIN engagement_data ed ON ed.event_date >= ds.period_start AND ed.event_date < (ds.period_start + ('1 ' || p_group_by_period)::interval)
+    GROUP BY ds.period_start
+    ORDER BY ds.period_start ASC;
+END;
+
+get_daily_view_stats
+CREATE OR REPLACE FUNCTION public.get_daily_view_stats(p_owner_id text, p_start_date date, p_end_date date, p_group_by_period text)
+RETURNS TABLE(view_date text, day_name text, total_views bigint)
+LANGUAGE sql STABLE AS $$
+    WITH date_series AS (
+        SELECT generate_series(date_trunc(p_group_by_period, p_start_date), date_trunc(p_group_by_period, p_end_date), ('1 ' || p_group_by_period)::interval)::date AS period_start
+    ),
+    owner_shop_views AS (
+        SELECT date_trunc(p_group_by_period, sv.viewed_at)::date AS view_date
+        FROM public.shopviews sv JOIN public.shops s ON sv.shop_id = s.shop_id
+        WHERE s.owner_user_id = p_owner_id AND sv.viewed_at::date BETWEEN p_start_date AND p_end_date
+    )
+    SELECT
+        to_char(ds.period_start, 'YYYY-MM-DD'),
+        CASE
+            WHEN p_group_by_period = 'day' THEN to_char(ds.period_start, 'Dy')
+            WHEN p_group_by_period = 'week' THEN 'W' || to_char(ds.period_start, 'WW')
+            WHEN p_group_by_period = 'month' THEN to_char(ds.period_start, 'Mon')
+            ELSE to_char(ds.period_start, 'Dy')
+        END,
+        COUNT(osv.view_date)
+    FROM date_series ds LEFT JOIN owner_shop_views osv ON ds.period_start = osv.view_date
+    GROUP BY ds.period_start ORDER BY ds.period_start ASC;
+$$;
+
+get_owner_analytics_overview (still using UUID)
+CREATE OR REPLACE FUNCTION public.get_owner_analytics_overview(p_owner_id text, p_period_days integer)
+RETURNS TABLE(total_views bigint, total_favorites bigint, avg_rating numeric, total_reviews bigint)
+LANGUAGE sql STABLE AS $$
+  SELECT COUNT(DISTINCT sv.view_id), COUNT(DISTINCT sf.user_id), AVG(r.rating), COUNT(DISTINCT r.review_id)
+  FROM shops s
+  LEFT JOIN shopviews sv ON s.shop_id = sv.shop_id AND sv.viewed_at >= (NOW() - (p_period_days || ' days')::interval)
+  LEFT JOIN shopfavourites sf ON s.shop_id = sf.shop_id AND sf.created_at >= (NOW() - (p_period_days || ' days')::interval)
+  LEFT JOIN reviews r ON s.shop_id = r.shop_id AND r.created_at >= (NOW() - (p_period_days || ' days')::interval)
+  WHERE s.owner_user_id = p_owner_id;
+$$;
+
+get_owner_dashboard_kpis
+BEGIN
+    RETURN QUERY
+    SELECT
+        COALESCE(COUNT(sps.shop_id), 0),
+        COALESCE(SUM(sps.total_views), 0),
+        COALESCE(SUM(sps.total_favorites), 0),
+        COALESCE(AVG(sps.average_rating), 0.0)
+    FROM
+        public.shop_performance_stats sps
+    WHERE
+        sps.owner_user_id = p_owner_id;
+END;
+
+get_owner_engagement_chart
+BEGIN
+    RETURN QUERY
+    WITH date_series AS (
+        SELECT generate_series(
+            date_trunc(p_group_by_period, p_start_date),
+            p_end_date,
+            ('1 ' || p_group_by_period)::interval
+        )::date AS period_start
+    ),
+    engagement_data AS (
+        SELECT r.created_at::date AS event_date, 'review' AS type FROM public.reviews r JOIN public.shops s ON r.shop_id = s.shop_id WHERE s.owner_user_id = p_owner_id AND r.created_at::date BETWEEN p_start_date AND p_end_date
+        UNION ALL
+        SELECT sf.created_at::date, 'favorite' FROM public.shopfavourites sf JOIN public.shops s ON sf.shop_id = s.shop_id WHERE s.owner_user_id = p_owner_id AND sf.created_at::date BETWEEN p_start_date AND p_end_date
+        UNION ALL
+        SELECT sv.viewed_at::date, 'view' FROM public.shopviews sv JOIN public.shops s ON sv.shop_id = s.shop_id WHERE s.owner_user_id = p_owner_id AND sv.viewed_at::date BETWEEN p_start_date AND p_end_date
+    )
+    SELECT
+        CASE
+            WHEN p_group_by_period = 'day' THEN to_char(ds.period_start, 'Dy')
+            WHEN p_group_by_period = 'week' THEN 'W' || to_char(ds.period_start, 'WW')
+            WHEN p_group_by_period = 'month' THEN to_char(ds.period_start, 'Mon')
+            ELSE to_char(ds.period_start, 'Dy')
+        END AS period_label,
+        COUNT(ed.type) FILTER (WHERE ed.type = 'view') AS total_views,
+        COUNT(ed.type) FILTER (WHERE ed.type = 'favorite') AS total_favorites,
+        COUNT(ed.type) FILTER (WHERE ed.type = 'review') AS total_reviews
+    FROM date_series ds
+    LEFT JOIN engagement_data ed ON ed.event_date >= ds.period_start AND ed.event_date < (ds.period_start + ('1 ' || p_group_by_period)::interval)
+    GROUP BY ds.period_start
+    ORDER BY ds.period_start ASC;
+END;
+
+get_owner_profile_stats
+  SELECT
+    COUNT(DISTINCT s.shop_id) AS total_shops,
+    COUNT(DISTINCT v.view_id) AS total_views,
+    COUNT(DISTINCT f.user_id) AS total_favorites,
+    AVG(r.rating) AS avg_rating
+  FROM shops s
+  LEFT JOIN shopviews v ON s.shop_id = v.shop_id
+  LEFT JOIN shopfavourites f ON s.shop_id = f.shop_id
+  LEFT JOIN reviews r ON s.shop_id = r.shop_id
+  WHERE s.owner_user_id = p_owner_id;
+
+get_owner_profile_stats (still using UUID)
+    SELECT
+        -- 1. Count the number of shops the owner has in the view
+        COALESCE(COUNT(sps.shop_id), 0),
+        
+        -- 2. Sum the total_views column for all of the owner's shops
+        COALESCE(SUM(sps.total_views), 0),
+        
+        -- 3. Sum the total_favorites column for all of the owner's shops
+        COALESCE(SUM(sps.total_favorites), 0),
+        
+        -- 4. Calculate the overall average rating across all of the owner's shops
+        COALESCE(AVG(sps.average_rating), 0.0)
+    FROM
+        public.shop_performance_stats sps
+    WHERE
+        sps.owner_user_id = p_owner_id;
+
+get_owner_shop_views_chart
+BEGIN
+    RETURN QUERY
+    WITH date_series AS (
+        SELECT generate_series(
+            date_trunc(p_group_by_period, p_start_date),
+            date_trunc(p_group_by_period, p_end_date),
+            ('1 ' || p_group_by_period)::interval
+        )::date AS period_start
+    ),
+    owner_shop_views AS (
+        SELECT date_trunc(p_group_by_period, sv.viewed_at)::date AS view_date
+        FROM public.shopviews sv
+        JOIN public.shops s ON sv.shop_id = s.shop_id
+        WHERE s.owner_user_id = p_owner_id AND sv.viewed_at::date BETWEEN p_start_date AND p_end_date
+    )
+    SELECT
+        to_char(ds.period_start, 'YYYY-MM-DD') AS view_date,
+        CASE
+            WHEN p_group_by_period = 'day' THEN to_char(ds.period_start, 'Dy')
+            WHEN p_group_by_period = 'week' THEN 'W' || to_char(ds.period_start, 'WW')
+            WHEN p_group_by_period = 'month' THEN to_char(ds.period_start, 'Mon')
+            ELSE to_char(ds.period_start, 'Dy')
+        END AS day_name,
+        COUNT(osv.view_date) AS total_views
+    FROM date_series ds
+    LEFT JOIN owner_shop_views osv ON ds.period_start = osv.view_date
+    GROUP BY ds.period_start
+    ORDER BY ds.period_start ASC;
+END;
+
+get_owner_shops_with_stats
+  SELECT
+    s.shop_id,
+    s.created_at,
+    s.name,
+    s.description,
+    s.address,
+    s.operating_hours,
+    s.phone_number,
+    s.owner_user_id,
+    s.status,
+    COUNT(DISTINCT v.user_id) AS total_views,
+    COUNT(DISTINCT f.user_id) AS total_favorites,
+    AVG(r.rating) AS average_rating
+  FROM shops s
+  LEFT JOIN shopviews v ON s.shop_id = v.shop_id
+
+get_shop_details_with_relations
+    SELECT
+        s.shop_id,
+        s.name,
+        s.description,
+        s.address,
+        s.phone_number,
+        s.operating_hours,
+        ARRAY(SELECT c.name FROM categories c JOIN shopcategorylink scl ON c.category_id = scl.category_id WHERE scl.shop_id = s.shop_id) AS categories,
+        ARRAY(SELECT t.tag_name FROM tags t JOIN shoptaglink stl ON t.tag_id = stl.tag_id WHERE stl.shop_id = s.shop_id) AS tags
+    FROM
+        shops s
+    WHERE
+        s.shop_id = p_shop_id;
+
+get_single_shop_details
+CREATE OR REPLACE FUNCTION public.get_single_shop_details(p_shop_id bigint)
+RETURNS TABLE(shop_id bigint, name character varying, description text, address text, phone_number text, operating_hours character varying, total_views bigint, total_favorites bigint)
+LANGUAGE plpgsql STABLE AS $$
+BEGIN
+    RETURN QUERY
+    SELECT s.shop_id, s.name, s.description, s.address, s.phone_number, s.operating_hours, sps.total_views, sps.total_favorites
+    FROM public.shops s LEFT JOIN public.shop_performance_stats sps ON s.shop_id = sps.shop_id
+    WHERE s.shop_id = p_shop_id;
+END;
+$$;
+
+is_admin
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.userroles WHERE user_id = auth.uid()::text AND role_id = '3'
+  );
+$$;
+
+is_owner
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.UserRoles ur
+    JOIN public.Roles r ON ur.role_id = r.role_id
+    WHERE ur.user_id = auth.uid() AND r.role_name = 'Owner'
+  );
+END;
+
+log_shop_view
+CREATE OR REPLACE FUNCTION public.log_shop_view(p_shop_id_to_log bigint)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  INSERT INTO public.shopviews(shop_id, user_id, viewed_at)
+  VALUES(p_shop_id_to_log, auth.uid()::text, NOW())
+  ON CONFLICT (shop_id, user_id) DO UPDATE SET viewed_at = NOW();
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.search_shops(search_term text)
+RETURNS TABLE(shop_id text, name text, description text, address text, status status, avg_rating numeric, review_count bigint, display_photo_url text)
+LANGUAGE plpgsql STABLE AS $$
+BEGIN
+    RETURN QUERY
+    WITH shop_search AS (
+        SELECT s.shop_id, s.name, s.description, s.address, s.status
+        FROM shops s
+        WHERE s.name_desc_fts @@ plainto_tsquery('english', search_term) AND s.status = 'Approved'
+    ), shop_reviews AS (
+        SELECT r.shop_id, AVG(r.rating) as avg_rating, COUNT(r.rating) as review_count
+        FROM reviews r WHERE r.shop_id IN (SELECT ss.shop_id FROM shop_search ss)
+        GROUP BY r.shop_id
+    ), shop_photos AS (
+        SELECT p.shop_id, p.photo_url
+        FROM shopphotos p WHERE p.shop_id IN (SELECT ss.shop_id FROM shop_search ss) AND p.type = 'Main'
+    )
+    SELECT ss.shop_id::text, ss.name, ss.description, ss.address, ss.status, COALESCE(sr.avg_rating, 0), COALESCE(sr.review_count, 0), sp.photo_url
+    FROM shop_search ss
+    LEFT JOIN shop_reviews sr ON ss.shop_id = sr.shop_id
+    LEFT JOIN shop_photos sp ON ss.shop_id = sp.shop_id;
+END;
+$$;
+
+search_shops_by_link
+    SELECT s.*
+    FROM public.shops s
+    WHERE
+        s.status = 'Approved'
+        AND
+        -- If a category ID is provided, the shop MUST be in that category.
+        -- If p_category_id is NULL, this condition is true for all shops.
+        (p_category_id IS NULL OR s.shop_id IN (
+            SELECT scl.shop_id FROM public.shopcategorylink scl WHERE scl.category_id = p_category_id
+        ))
+        AND
+        -- If a tag ID is provided, the shop MUST have that tag.
+        -- If p_tag_id is NULL, this condition is true for all shops.
+        (p_tag_id IS NULL OR s.shop_id IN (
+            SELECT stl.shop_id FROM public.shoptaglink stl WHERE stl.tag_id = p_tag_id
+        ));
+
+update_shop_links
+CREATE OR REPLACE FUNCTION public.update_shop_links(p_shop_id bigint, p_category_ids integer[], p_tag_ids integer[])
+RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+    IF NOT (auth.uid()::text = (SELECT owner_user_id FROM public.shops WHERE shop_id = p_shop_id)) THEN
+        RAISE EXCEPTION 'You are not authorized to edit this shop.';
+    END IF;
+
+    DELETE FROM public.shopcategorylink WHERE shop_id = p_shop_id;
+    DELETE FROM public.shoptaglink WHERE shop_id = p_shop_id;
+
+    IF array_length(p_category_ids, 1) > 0 THEN
+        INSERT INTO public.shopcategorylink (shop_id, category_id)
+        SELECT p_shop_id, unnest(p_category_ids);
+    END IF;
+
+    IF array_length(p_tag_ids, 1) > 0 THEN
+        INSERT INTO public.shoptaglink (shop_id, tag_id)
+        SELECT p_shop_id, unnest(p_tag_ids);
+    END IF;
+END;
+$$;
+
+update_shops_fts
+BEGIN
+  NEW.name_desc_fts :=
+    setweight(to_tsvector('english', coalesce(NEW.name, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(NEW.description, '')), 'B');
+  RETURN NEW;
+END;

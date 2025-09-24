@@ -1,30 +1,27 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+// lib/user.ts
+import { supabase } from './supabase';
 
-// This function takes an authenticated Supabase client and a user ID,
-// and returns the role_id from the userroles table.
-export const getUserRole = async (supabase: SupabaseClient, userId: string): Promise<number | null> => {
+/**
+ * Fetches the role_id for the currently authenticated user.
+ * This function calls the PostgreSQL function `get_my_role_id()`,
+ * which securely determines the user's ID from the session.
+ *
+ * @returns {Promise<number | null>} A promise that resolves to the user's role_id or null if not found or an error occurs.
+ */
+export const getMyUserRole = async (): Promise<number | null> => {
   try {
-    const { data, error } = await supabase
-      .from('userroles')
-      .select('role_id')
-      .eq('user_id', userId)
-      .single();
+    // Corrected to call the existing and correct RPC function.
+    const { data, error } = await supabase.rpc('get_my_role_id');
 
     if (error) {
-      // If the user has no role entry, it's not a fatal error, just return null.
-      if (error.code === 'PGRST116') {
-        console.warn(`No role found for user ${userId}`);
-        return null;
-      }
-      // For other errors, log them.
-      console.error('Error fetching user role:', error);
+      console.error('Error fetching user role:', error.message);
       return null;
     }
 
-    return data?.role_id || null;
+    return data;
 
   } catch (e) {
-    console.error('Exception in getUserRole:', e);
+    console.error('Exception in getMyUserRole:', e);
     return null;
   }
 };

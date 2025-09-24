@@ -1,5 +1,3 @@
-// /app/(owner)/analytics.tsx
-
 import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +5,7 @@ import { BarChart as BarChartIcon, Eye, Heart, Star, Filter, MessageSquare } fro
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 // --- TYPE DEFINITIONS ---
 type OverviewStats = { total_views: number; total_favorites: number; avg_rating: number; total_reviews: number; };
@@ -14,13 +13,13 @@ type EngagementStat = { period_label: string; total_views: number; total_favorit
 type ShopPerformance = { shop_id: number; name: string; total_views: number; total_favorites: number; average_rating: number; };
 
 export default function AnalyticsScreen() {
+  const { user } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState('week');
   const [isLoading, setIsLoading] = useState(true);
   const [overview, setOverview] = useState<OverviewStats | null>(null);
   const [engagementStats, setEngagementStats] = useState<EngagementStat[]>([]);
   const [shopPerformance, setShopPerformance] = useState<ShopPerformance[]>([]);
 
-  // This map defines the days and the groupBy parameter for the SQL function
   const periodMap: { [key: string]: { days: number; groupBy: 'day' | 'week' | 'month' } } = {
     week: { days: 7, groupBy: 'day' },
     month: { days: 30, groupBy: 'week' },
@@ -30,37 +29,68 @@ export default function AnalyticsScreen() {
   useFocusEffect(
     useCallback(() => {
       async function fetchAllAnalytics() {
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
         setIsLoading(true);
         try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) { Alert.alert("Not logged in"); router.replace('/'); return; }
-
           const periodConfig = periodMap[selectedPeriod];
           const today = new Date();
-          const endDate = today.toISOString().split('T')[0];
-          const startDate = new Date();
-          startDate.setDate(today.getDate() - (periodConfig.days - 1));
-          const startDateStr = startDate.toISOString().split('T')[0];
+          let startDate: Date;
+          let endDate: Date;
 
-          // The RPC calls now use the correct parameters from periodMap
+          // --- THIS IS THE FIX ---
+          // More precise date range calculation to avoid duplicate months.
+          if (selectedPeriod === 'year') {
+            const currentYear = today.getFullYear();
+            // Start of the year is Jan 1st.
+            startDate = new Date(currentYear, 0, 1); 
+            // End of the year is Dec 31st.
+            endDate = new Date(currentYear, 11, 31);
+          } else if (selectedPeriod === 'month') {
+            // Go back 30 days from today.
+            startDate = new Date();
+            startDate.setDate(today.getDate() - 29);
+            endDate = today;
+          } else { // week
+            // Go back 7 days from today.
+            startDate = new Date();
+            startDate.setDate(today.getDate() - 6);
+            endDate = today;
+          }
+          
+          const startDateStr = startDate.toISOString().split('T')[0];
+          const endDateStr = endDate.toISOString().split('T')[0];
+          // --- END OF FIX ---
+
           const [overviewRes, engagementRes, shopPerformanceRes] = await Promise.all([
             supabase.rpc('get_owner_analytics_overview', { p_owner_id: user.id, p_period_days: periodConfig.days }).single(),
-            supabase.rpc('get_daily_engagement_stats', { p_owner_id: user.id, p_start_date: startDateStr, p_end_date: endDate, p_group_by_period: periodConfig.groupBy }),
+            supabase.rpc('get_daily_engagement_stats', { p_owner_id: user.id, p_start_date: startDateStr, p_end_date: endDateStr, p_group_by_period: periodConfig.groupBy }),
             supabase.rpc('get_owner_shops_with_stats', { p_owner_id: user.id })
           ]);
 
           if (overviewRes.error) throw overviewRes.error;
-          setOverview(overviewRes.data as unknown as OverviewStats);
+          setOverview(overviewRes.data as OverviewStats);
+
           if (engagementRes.error) throw engagementRes.error;
           setEngagementStats(engagementRes.data as EngagementStat[]);
+
           if (shopPerformanceRes.error) throw shopPerformanceRes.error;
           setShopPerformance(shopPerformanceRes.data as ShopPerformance[]);
-        } catch (error: any) { console.error("Error fetching analytics data:", error); Alert.alert("Error", "Could not load analytics data."); } finally { setIsLoading(false); }
+
+        } catch (error: any) { 
+          console.error("Error fetching analytics data:", error); 
+          Alert.alert("Error", "Could not load analytics data: " + error.message); 
+        } finally { 
+          setIsLoading(false); 
+        }
       }
       fetchAllAnalytics();
-    }, [selectedPeriod])
+    }, [user, selectedPeriod])
   );
 
+  // The rest of the file is unchanged.
   const StatCard = ({ icon: Icon, title, value, color }: any) => (
     <View style={styles.statCard}>
       <LinearGradient colors={[color + '20', color + '10']} style={styles.statCardGradient}>
@@ -76,26 +106,25 @@ export default function AnalyticsScreen() {
       return <Text style={styles.emptyChartText}>No data for this period.</Text>;
     }
 
+    const maxTotal = Math.max(...data.map(item => (item.total_views || 0) + (item.total_favorites || 0) + (item.total_reviews || 0)));
+    if (maxTotal === 0) {
+        return <Text style={styles.emptyChartText}>No engagement data for this period.</Text>;
+    }
+
     return (
       <View style={styles.chartContainer}>
         <Text style={styles.chartTitle}>Engagement ({selectedPeriod})</Text>
         <View style={styles.chart}>
           {data.map((item, index) => {
-            const total = item.total_views + item.total_favorites + item.total_reviews;
-            if (total === 0) {
-              return (
-                <View key={index} style={styles.chartBar}>
-                  <View style={styles.barContainer} />
-                  <Text style={styles.barLabel}>{item.period_label}</Text>
-                </View>
-              );
-            }
+            const total = (item.total_views || 0) + (item.total_favorites || 0) + (item.total_reviews || 0);
+            const barHeight = total > 0 ? (total / maxTotal) * 120 : 0;
+
             return (
               <View key={index} style={styles.chartBar}>
-                <View style={styles.barContainer}>
-                  <View style={{ flex: item.total_reviews, backgroundColor: '#10b981' }} />
-                  <View style={{ flex: item.total_favorites, backgroundColor: '#ef4444' }} />
-                  <View style={{ flex: item.total_views, backgroundColor: '#0891b2' }} />
+                <View style={[styles.barContainer, { height: barHeight }]}>
+                  <View style={{ flex: item.total_reviews || 0, backgroundColor: '#10b981' }} />
+                  <View style={{ flex: item.total_favorites || 0, backgroundColor: '#ef4444' }} />
+                  <View style={{ flex: item.total_views || 0, backgroundColor: '#0891b2' }} />
                 </View>
                 <Text style={styles.barLabel}>{item.period_label}</Text>
               </View>
@@ -189,15 +218,15 @@ const styles = StyleSheet.create({
   chartSection: { paddingHorizontal: 20, marginBottom: 24 },
   chartContainer: { backgroundColor: '#ffffff', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3 },
   chartTitle: { fontSize: 16, fontWeight: '600', color: '#1e293b', marginBottom: 16 },
-  chart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 140, marginBottom: 16 },
-  chartBar: { alignItems: 'center', flex: 1 },
+  chart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', height: 140, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  chartBar: { alignItems: 'center', flex: 1, paddingHorizontal: 4 },
   barContainer: {
-    height: 120,
-    width: 20,
+    width: '100%',
+    minWidth: 20,
     borderRadius: 4,
     overflow: 'hidden',
     backgroundColor: '#f1f5f9',
-    flexDirection: 'column-reverse', // This stacks items from the bottom up
+    flexDirection: 'column-reverse',
     marginBottom: 8,
   },
   barLabel: { fontSize: 12, color: '#64748b', fontWeight: '500' },

@@ -1,260 +1,199 @@
-// /app/(owner)/notifications.tsx
-
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Alert, ActivityIndicator } from 'react-native';
+import {
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, RefreshControl, ActivityIndicator, Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Clock, Star, Eye, Heart, Trash2, BookMarked as MarkAsRead } from 'lucide-react-native';
+import { Heart, MapPin, Trash2, Eye } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect, router } from 'expo-router';
-import { useSession, useUser } from '@clerk/clerk-expo';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { router, useFocusEffect } from 'expo-router';
+import { supabase } from '../../lib/supabase'; // Use the global Supabase client
+import { useAuth } from '../../contexts/AuthContext'; // Use our own AuthContext
 
-// --- TYPE DEFINITION FOR OUR LIVE NOTIFICATION DATA ---
-type Notification = {
-  notification_id: number;
-  recipient_user_id: string;
-  title: string;
-  message: string;
-  is_read: boolean;
-  created_at: string;
-  // We'll add these client-side for the UI
-  type?: string; // e.g., 'approval', 'review'
-  icon?: React.ElementType;
-  color?: string;
+// Define a type for the shop data for clarity
+type FavoriteShop = {
+  shop_id: number;
+  name: string;
+  address: string;
+  main_photo_path: string | null;
+  display_photo_url?: string; // This will be the signed URL
 };
 
-// Helper to map notification titles to icons and colors
-const getNotificationStyle = (title: string) => {
-  if (title.includes('Approved')) return { icon: CheckCircle, color: '#10b981', type: 'approval' };
-  if (title.includes('Review')) return { icon: Star, color: '#fbbf24', type: 'review' };
-  if (title.includes('Milestone')) return { icon: Eye, color: '#0891b2', type: 'milestone' };
-  if (title.includes('Favorited')) return { icon: Heart, color: '#ef4444', type: 'favorite' };
-  if (title.includes('Under Review')) return { icon: Clock, color: '#f59e0b', type: 'pending' };
-  return { icon: AlertCircle, color: '#8b5cf6', type: 'system' }; // Default
-};
+export default function FavoritesScreen() {
+  // Get the session from our own Supabase AuthContext
+  const { session } = useAuth();
 
-export default function NotificationsScreen() {
-  const { session } = useSession();
-  const { user } = useUser();
-
-  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [favoriteShops, setFavoriteShops] = useState<FavoriteShop[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Effect 1: Create the session-aware Supabase client
-  React.useEffect(() => {
-    if (session) {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      if (!supabaseUrl || !supabaseAnonKey) return;
-
-      const client = createClient(supabaseUrl, supabaseAnonKey, {
-        global: {
-          fetch: async (url, options = {}) => {
-            const token = await session.getToken({ template: 'supabase' });
-            const headers = new Headers(options.headers);
-            if (token) headers.set('Authorization', `Bearer ${token}`);
-            return fetch(url, { ...options, headers });
-          },
-        },
-      });
-      setSupabase(client);
-    }
-  }, [session]);
-
-  const fetchNotifications = useCallback(async () => {
-    if (!supabase || !user) {
+  // Fetch data using the user ID from the Supabase session
+  const fetchFavoriteShops = useCallback(async () => {
+    if (!session?.user) {
       setIsLoading(false);
+      setFavoriteShops([]); // Clear shops if user is not logged in
       return;
     }
+    
     try {
-      const { data, error } = await supabase
-        .from('notifications')
+      // 1. Get the list of favorite shop IDs for the current user
+      const { data: favorites, error: favoritesError } = await supabase
+        .from('shopfavourites')
+        .select('shop_id')
+        .eq('user_id', session.user.id);
+
+      if (favoritesError) throw favoritesError;
+
+      const shopIds = favorites.map(fav => fav.shop_id);
+      if (shopIds.length === 0) {
+        setFavoriteShops([]);
+        return;
+      }
+
+      // 2. Fetch the details for those shops from the public view
+      const { data: shopsData, error: shopsError } = await supabase
+        .from('public_shops_with_photos')
         .select('*')
-        .eq('recipient_user_id', user.id)
-        .order('created_at', { ascending: false });
+        .in('shop_id', shopIds);
 
-      if (error) throw error;
+      if (shopsError) throw shopsError;
 
-      // Map the data to include UI styles
-      const styledNotifications = data.map(n => ({
-        ...n,
-        ...getNotificationStyle(n.title),
-      }));
-
-      setNotifications(styledNotifications);
+      // 3. Get signed URLs for the shop photos
+      const shopsWithSignedUrls = await Promise.all(
+        (shopsData || []).map(async (shop) => {
+          let displayUrl = 'https://placehold.co/400x200/e2e8f0/64748b?text=No+Image';
+          if (shop.main_photo_path ) {
+            const { data } = await supabase.storage.from('shop-images').createSignedUrl(shop.main_photo_path, 3600);
+            if (data) displayUrl = data.signedUrl;
+          }
+          return { ...shop, display_photo_url: displayUrl };
+        })
+      );
+      setFavoriteShops(shopsWithSignedUrls);
 
     } catch (error: any) {
-      console.error("Error fetching notifications:", error);
-      Alert.alert("Error", "Could not load notifications.");
+      Alert.alert("Error", "Could not fetch your favorite shops.");
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [supabase, user]);
+  }, [session]); // The dependency is now the Supabase session
 
+  // Refetch data when the screen comes into focus
   useFocusEffect(
     useCallback(() => {
       setIsLoading(true);
-      fetchNotifications();
-    }, [fetchNotifications])
+      fetchFavoriteShops();
+    }, [fetchFavoriteShops])
   );
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchNotifications();
+    fetchFavoriteShops();
   };
 
-  const markAsRead = async (id: number) => {
-    // Optimistically update the UI
-    setNotifications(prev =>
-      prev.map(notif =>
-        notif.notification_id === id ? { ...notif, is_read: true } : notif
-      )
-    );
-    // Update the database in the background
-    await supabase
-      ?.from('notifications')
-      .update({ is_read: true })
-      .eq('notification_id', id);
-  };
+  // Remove favorite function now uses the session user ID
+  const removeFavorite = async (shopId: number) => {
+    if (!session?.user) return;
 
-  const markAllAsRead = async () => {
-    if (!supabase || !user) return;
+    // Optimistically update the UI for a faster response
+    setFavoriteShops(prev => prev.filter(shop => shop.shop_id !== shopId));
 
-    setNotifications(prev =>
-      prev.map(notif => ({ ...notif, is_read: true }))
-    );
-    await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('recipient_user_id', user.id)
-      .eq('is_read', false);
-  };
-
-  const deleteNotification = async (id: number) => {
-    if (!supabase) return;
-    setNotifications(prev => prev.filter(notif => notif.notification_id !== id));
-    await supabase
-      .from('notifications')
+    // Perform the delete operation in the background
+    const { error } = await supabase
+      .from('shopfavourites')
       .delete()
-      .eq('notification_id', id);
+      .match({ shop_id: shopId, user_id: session.user.id });
+
+    if (error) {
+      Alert.alert("Error", "Could not remove favorite. Please refresh and try again.");
+      // If the delete fails, refresh the data to get the correct state
+      fetchFavoriteShops();
+    }
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-
-    if (diffDays > 0) return `${diffDays}d ago`;
-    if (diffHours > 0) return `${diffHours}h ago`;
-    if (diffMinutes > 0) return `${diffMinutes}m ago`;
-    return 'Just now';
+  const openDetails = (shop: FavoriteShop) => {
+    router.push({ pathname: '/(customer)/restaurant-details', params: { restaurantId: String(shop.shop_id) } });
   };
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
-
-  const NotificationCard = ({ notification }: { notification: Notification }) => {
-    const IconComponent = notification.icon || AlertCircle;
-    
-    return (
-      <TouchableOpacity
-        style={[styles.notificationCard, !notification.is_read && styles.notificationCardUnread]}
-        onPress={() => !notification.is_read && markAsRead(notification.notification_id)}
-      >
-        <View style={styles.notificationHeader}>
-          <View style={styles.notificationIcon}><IconComponent size={20} color={notification.color} /></View>
-          <View style={styles.notificationContent}>
-            <View style={styles.notificationTitleRow}>
-              <Text style={[styles.notificationTitle, !notification.is_read && styles.notificationTitleUnread]}>{notification.title}</Text>
-              {!notification.is_read && <View style={styles.unreadDot} />}
-            </View>
-            <Text style={styles.notificationMessage}>{notification.message}</Text>
-            <Text style={styles.notificationTime}>{formatTimestamp(notification.created_at)}</Text>
-          </View>
-          <TouchableOpacity style={styles.deleteButton} onPress={() => deleteNotification(notification.notification_id)}>
-            <Trash2 size={16} color="#94a3b8" />
-          </TouchableOpacity>
-        </View>
+  // The ShopCard component and render logic remain the same
+  const ShopCard = ({ shop }: { shop: FavoriteShop }) => (
+    <View style={styles.shopCard}>
+      <Image source={{ uri: shop.display_photo_url }} style={styles.shopImage} />
+      <TouchableOpacity style={styles.removeButton} onPress={() => removeFavorite(shop.shop_id)}>
+        <Trash2 size={18} color="#ef4444" />
       </TouchableOpacity>
-    );
-  };
+      <View style={styles.shopInfo}>
+        <Text style={styles.shopName} numberOfLines={2}>{shop.name}</Text>
+        <View style={styles.distanceContainer}>
+          <MapPin size={14} color="#64748b" />
+          <Text style={styles.distance} numberOfLines={1}>{shop.address || 'No address'}</Text>
+        </View>
+        <TouchableOpacity style={styles.detailsButton} onPress={() => openDetails(shop)}>
+          <Eye size={16} color="#ffffff" />
+          <Text style={styles.actionButtonText}>View Details</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.header}>
         <View style={styles.headerContent}>
-          <Bell size={24} color="#ffffff" />
+          <Heart size={28} color="#ffffff" fill="#ffffff" />
           <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>Notifications</Text>
-            <Text style={styles.headerSubtitle}>{unreadCount > 0 ? `${unreadCount} unread notifications` : 'All caught up!'}</Text>
+            <Text style={styles.headerTitle}>My Favorites</Text>
+            <Text style={styles.headerSubtitle}>{favoriteShops.length} saved restaurant{favoriteShops.length !== 1 && 's'}</Text>
           </View>
         </View>
-        {unreadCount > 0 && (
-          <TouchableOpacity style={styles.markAllButton} onPress={markAllAsRead}>
-            <MarkAsRead size={16} color="#ffffff" /><Text style={styles.markAllButtonText}>Mark all read</Text>
-          </TouchableOpacity>
-        )}
       </LinearGradient>
-
       {isLoading ? (
-        <ActivityIndicator size="large" color="#8b5cf6" style={{ flex: 1 }} />
+        <ActivityIndicator size="large" color="#58508D" style={{ flex: 1 }} />
       ) : (
-        <ScrollView
-          style={styles.content}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          showsVerticalScrollIndicator={false}
-        >
-          {notifications.length > 0 ? (
-            <View style={styles.notificationsContainer}>
-              {notifications.map(notification => (
-                <NotificationCard key={notification.notification_id} notification={notification} />
-              ))}
-            </View>
+        <ScrollView style={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+          {favoriteShops.length > 0 ? (
+            <View style={styles.shopsGrid}>{favoriteShops.map(shop => <ShopCard key={shop.shop_id} shop={shop} />)}</View>
           ) : (
             <View style={styles.emptyState}>
-              <Bell size={64} color="#cbd5e1" />
-              <Text style={styles.emptyStateTitle}>No Notifications</Text>
-              <Text style={styles.emptyStateText}>You're all caught up! New notifications will appear here.</Text>
+              <Heart size={64} color="#cbd5e1" />
+              <Text style={styles.emptyStateTitle}>No Favorites Yet</Text>
+              <Text style={styles.emptyStateText}>Start exploring and tap the heart icon to save your favorite spots.</Text>
+              <TouchableOpacity style={styles.exploreButton} onPress={() => router.push('/(customer)')}>
+                <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.exploreButtonGradient}>
+                  <Text style={styles.exploreButtonText}>Explore Restaurants</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
           )}
-          <View style={styles.bottomSpacing} />
         </ScrollView>
       )}
     </SafeAreaView>
   );
 }
 
-// --- STYLES (UNCHANGED) ---
+// Styles are unchanged
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
+  container: { flex: 1, backgroundColor: '#F7F7F7' },
   header: { paddingHorizontal: 20, paddingVertical: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerContent: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
+  headerContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   headerText: { flex: 1 },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#ffffff' },
-  headerSubtitle: { fontSize: 14, color: '#e9d5ff', marginTop: 4 },
-  markAllButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, gap: 6 },
-  markAllButtonText: { color: '#ffffff', fontSize: 12, fontWeight: '500' },
+  headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
   content: { flex: 1 },
-  notificationsContainer: { padding: 20 },
-  notificationCard: { backgroundColor: '#ffffff', borderRadius: 12, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 },
-  notificationCardUnread: { borderLeftWidth: 4, borderLeftColor: '#8b5cf6', backgroundColor: '#fefefe' },
-  notificationHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  notificationIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center' },
-  notificationContent: { flex: 1 },
-  notificationTitleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 },
-  notificationTitle: { fontSize: 16, fontWeight: '600', color: '#64748b', flex: 1 },
-  notificationTitleUnread: { color: '#1e293b' },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#DC2626' },
-  notificationMessage: { fontSize: 14, color: '#64748b', lineHeight: 20, marginBottom: 8 },
-  notificationTime: { fontSize: 12, color: '#94a3b8' },
-  deleteButton: { padding: 4 },
-  emptyState: { alignItems: 'center', paddingVertical: 80, paddingHorizontal: 40 },
-  emptyStateTitle: { fontSize: 24, fontWeight: 'bold', color: '#64748b', marginTop: 24, marginBottom: 12 },
-  emptyStateText: { fontSize: 16, color: '#94a3b8', textAlign: 'center', lineHeight: 24 },
-  bottomSpacing: { height: 20 },
+  shopsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', padding: 16 },
+  shopCard: { width: '48%', backgroundColor: '#FFFFFF', borderRadius: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, overflow: 'hidden' },
+  shopImage: { width: '100%', height: 120, backgroundColor: '#F7F7F7' },
+  removeButton: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 16, padding: 6, zIndex: 1 },
+  shopInfo: { padding: 12 },
+  shopName: { fontSize: 16, fontWeight: 'bold', color: '#2F4858', marginBottom: 8, height: 40 },
+  distanceContainer: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 12 },
+  distance: { fontSize: 12, color: '#64748b', flex: 1 },
+  detailsButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: 8, gap: 6, backgroundColor: '#58508D' },
+  actionButtonText: { color: '#ffffff', fontSize: 12, fontWeight: '600' },
+  emptyState: { alignItems: 'center', paddingVertical: 80, paddingHorizontal: 40, flex: 1, justifyContent: 'center' },
+  emptyStateTitle: { fontSize: 24, fontWeight: 'bold', color: '#2F4858', marginTop: 24, marginBottom: 12 },
+  emptyStateText: { fontSize: 16, color: '#9B9B9B', textAlign: 'center', lineHeight: 24, marginBottom: 32 },
+  exploreButton: { borderRadius: 12, overflow: 'hidden' },
+  exploreButtonGradient: { paddingVertical: 16, paddingHorizontal: 32, alignItems: 'center' },
+  exploreButtonText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
 });

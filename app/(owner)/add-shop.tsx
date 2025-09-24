@@ -1,260 +1,549 @@
-// /app/(owner)/notifications.tsx
-
-import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  Modal,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Clock, Star, Eye, Heart, Trash2, BookMarked as MarkAsRead } from 'lucide-react-native';
+import { Image as ImageIcon, X, Upload, Search } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect, router } from 'expo-router';
-import { useSession, useUser } from '@clerk/clerk-expo';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import * as ImagePicker from 'expo-image-picker';
+import { supabase } from '../../lib/supabase';
+import { Session } from '@supabase/supabase-js';
+import { v4 as uuidv4 } from 'uuid';
+import 'react-native-url-polyfill/auto';
+import * as FileSystem from 'expo-file-system/legacy';
+import { decode } from 'base64-arraybuffer';
+import { router } from 'expo-router';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import PlacesInput from 'react-native-places-input';
+import Constants from 'expo-constants';
 
-// --- TYPE DEFINITION FOR OUR LIVE NOTIFICATION DATA ---
-type Notification = {
-  notification_id: number;
-  recipient_user_id: string;
-  title: string;
-  message: string;
-  is_read: boolean;
-  created_at: string;
-  // We'll add these client-side for the UI
-  type?: string; // e.g., 'approval', 'review'
-  icon?: React.ElementType;
-  color?: string;
-};
+type Item = { id: number; name: string; };
 
-// Helper to map notification titles to icons and colors
-const getNotificationStyle = (title: string) => {
-  if (title.includes('Approved')) return { icon: CheckCircle, color: '#10b981', type: 'approval' };
-  if (title.includes('Review')) return { icon: Star, color: '#fbbf24', type: 'review' };
-  if (title.includes('Milestone')) return { icon: Eye, color: '#0891b2', type: 'milestone' };
-  if (title.includes('Favorited')) return { icon: Heart, color: '#ef4444', type: 'favorite' };
-  if (title.includes('Under Review')) return { icon: Clock, color: '#f59e0b', type: 'pending' };
-  return { icon: AlertCircle, color: '#8b5cf6', type: 'system' }; // Default
-};
+// The 'Place' type is now globally available from the types/google-places.d.ts file.
 
-export default function NotificationsScreen() {
-  const { session } = useSession();
-  const { user } = useUser();
+const GOOGLE_MAPS_API_KEY = Constants.expoConfig?.extra?.googleApiKey;
 
-  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+export default function AddShopScreen() {
+  const [formData, setFormData] = useState({
+    name: '', description: '', address: '',
+    phone: '', hours: '',
+  });
+  
+  const [selectedImages, setSelectedImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
+  const [mainImageUri, setMainImageUri] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+
+  const [allCategories, setAllCategories] = useState<Item[]>([]);
+  const [allTags, setAllTags] = useState<Item[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<Set<number>>(new Set());
+  const [selectedTagIds, setSelectedTagIds] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
 
-  // Effect 1: Create the session-aware Supabase client
-  React.useEffect(() => {
-    if (session) {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      if (!supabaseUrl || !supabaseAnonKey) return;
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [region, setRegion] = useState({
+    latitude: 5.4164,
+    longitude: 100.3327,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  });
+  
+  const [isAddressModalVisible, setIsAddressModalVisible] = useState(false);
 
-      const client = createClient(supabaseUrl, supabaseAnonKey, {
-        global: {
-          fetch: async (url, options = {}) => {
-            const token = await session.getToken({ template: 'supabase' });
-            const headers = new Headers(options.headers);
-            if (token) headers.set('Authorization', `Bearer ${token}`);
-            return fetch(url, { ...options, headers });
-          },
-        },
-      });
-      setSupabase(client);
+  useEffect(() => {
+    if (!GOOGLE_MAPS_API_KEY) {
+      Alert.alert("Configuration Error", "Google Maps API key is missing.");
     }
-  }, [session]);
+    const fetchInitialData = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        const [categoriesRes, tagsRes] = await Promise.all([
+          supabase.from('categories').select('category_id, name'),
+          supabase.from('tags').select('tag_id, tag_name'),
+        ]);
+        if (categoriesRes.error) throw categoriesRes.error;
+        if (tagsRes.error) throw tagsRes.error;
+        const categoriesData = (categoriesRes.data || []).map(c => ({ id: c.category_id, name: c.name }));
+        const tagsData = (tagsRes.data || []).map(t => ({ id: t.tag_id, name: t.tag_name }));
+        setAllCategories(categoriesData);
+        setAllTags(tagsData);
+      } catch (error: any) {
+        Alert.alert('Error', 'Could not load required data for this form.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchInitialData();
+  }, []);
 
-  const fetchNotifications = useCallback(async () => {
-    if (!supabase || !user) {
-      setIsLoading(false);
+  const updateField = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const resetForm = () => {
+    setFormData({ name: '', description: '', address: '', phone: '', hours: '' });
+    setSelectedImages([]);
+    setMainImageUri(null);
+    setSelectedCategoryIds(new Set());
+    setSelectedTagIds(new Set());
+    setLocation(null);
+  };
+
+  const pickImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permissionResult.granted === false) {
+      Alert.alert("Permission Required", "You need to allow access to your photos.");
       return;
     }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      const newImages = result.assets;
+      setSelectedImages(prevImages => [...prevImages, ...newImages]);
+      if (!mainImageUri && newImages.length > 0) {
+        setMainImageUri(newImages[0].uri);
+      }
+    }
+  };
+
+  const handleToggleCategory = (id: number) => {
+    setSelectedCategoryIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
+      return newSet;
+    });
+  };
+
+  const handleToggleTag = (id: number) => {
+    setSelectedTagIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
+      return newSet;
+    });
+  };
+
+  const submitShop = async () => {
+    if (!session?.user) {
+      Alert.alert('Error', 'You must be logged in to submit a shop.');
+      return;
+    }
+    if (!formData.name || selectedImages.length === 0) {
+      Alert.alert('Validation Error', 'Please fill in the shop name and select at least one image.');
+      return;
+    }
+    if (!mainImageUri) {
+      Alert.alert('Validation Error', 'Please select a main image for your shop.');
+      return;
+    }
+    if (!location) {
+      Alert.alert('Validation Error', 'Please set your shop location on the map.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('recipient_user_id', user.id)
-        .order('created_at', { ascending: false });
+      const { data: newShopId, error: createError } = await supabase.rpc('create_shop_with_links', {
+        p_name: formData.name,
+        p_description: formData.description,
+        p_address: formData.address,
+        p_phone_number: formData.phone,
+        p_operating_hours: formData.hours,
+        p_category_ids: Array.from(selectedCategoryIds),
+        p_tag_ids: Array.from(selectedTagIds),
+        p_latitude: location.latitude,
+        p_longitude: location.longitude,
+      }).single();
 
-      if (error) throw error;
+      if (createError || !newShopId) {
+        throw new Error(createError?.message || 'Failed to create shop entry.');
+      }
 
-      // Map the data to include UI styles
-      const styledNotifications = data.map(n => ({
-        ...n,
-        ...getNotificationStyle(n.title),
-      }));
+      for (const image of selectedImages) {
+        const fileExt = image.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+        const fileName = `${uuidv4()}.${fileExt}`;
+        const filePath = `${newShopId}/${fileName}`;
 
-      setNotifications(styledNotifications);
+        const base64 = await FileSystem.readAsStringAsync(image.uri, { encoding: 'base64' });
+        const arrayBuffer = decode(base64);
+
+        const { error: uploadError } = await supabase.storage
+          .from('shop-images')
+          .upload(filePath, arrayBuffer, { contentType: image.mimeType ?? `image/${fileExt}` });
+
+        if (uploadError) {
+          console.error(`Failed to upload ${fileName}:`, uploadError);
+          continue;
+        }
+
+        const { error: photoInsertError } = await supabase.from('shopphotos').insert({
+            shop_id: newShopId,
+            uploader_user_id: session.user.id,
+            photo_url: filePath,
+            type: image.uri === mainImageUri ? 'Main' : 'Gallery',
+            status: 'Approved'
+        });
+
+        if (photoInsertError) {
+          console.error(`Failed to link photo ${fileName}:`, photoInsertError);
+        }
+      }
+
+      Alert.alert('Success!', 'Your shop has been submitted for review.', [{ text: 'OK', onPress: () => {
+        resetForm();
+        router.replace('/(owner)');
+      }}]);
 
     } catch (error: any) {
-      console.error("Error fetching notifications:", error);
-      Alert.alert("Error", "Could not load notifications.");
+      console.error("Error submitting shop:", error);
+      Alert.alert('Error', 'There was a problem submitting your shop: ' + error.message);
     } finally {
-      setIsLoading(false);
-      setRefreshing(false);
+      setIsSubmitting(false);
     }
-  }, [supabase, user]);
-
-  useFocusEffect(
-    useCallback(() => {
-      setIsLoading(true);
-      fetchNotifications();
-    }, [fetchNotifications])
-  );
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchNotifications();
   };
 
-  const markAsRead = async (id: number) => {
-    // Optimistically update the UI
-    setNotifications(prev =>
-      prev.map(notif =>
-        notif.notification_id === id ? { ...notif, is_read: true } : notif
-      )
-    );
-    // Update the database in the background
-    await supabase
-      ?.from('notifications')
-      .update({ is_read: true })
-      .eq('notification_id', id);
-  };
-
-  const markAllAsRead = async () => {
-    if (!supabase || !user) return;
-
-    setNotifications(prev =>
-      prev.map(notif => ({ ...notif, is_read: true }))
-    );
-    await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('recipient_user_id', user.id)
-      .eq('is_read', false);
-  };
-
-  const deleteNotification = async (id: number) => {
-    if (!supabase) return;
-    setNotifications(prev => prev.filter(notif => notif.notification_id !== id));
-    await supabase
-      .from('notifications')
-      .delete()
-      .eq('notification_id', id);
-  };
-
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-
-    if (diffDays > 0) return `${diffDays}d ago`;
-    if (diffHours > 0) return `${diffHours}h ago`;
-    if (diffMinutes > 0) return `${diffMinutes}m ago`;
-    return 'Just now';
-  };
-
-  const unreadCount = notifications.filter(n => !n.is_read).length;
-
-  const NotificationCard = ({ notification }: { notification: Notification }) => {
-    const IconComponent = notification.icon || AlertCircle;
-    
-    return (
-      <TouchableOpacity
-        style={[styles.notificationCard, !notification.is_read && styles.notificationCardUnread]}
-        onPress={() => !notification.is_read && markAsRead(notification.notification_id)}
-      >
-        <View style={styles.notificationHeader}>
-          <View style={styles.notificationIcon}><IconComponent size={20} color={notification.color} /></View>
-          <View style={styles.notificationContent}>
-            <View style={styles.notificationTitleRow}>
-              <Text style={[styles.notificationTitle, !notification.is_read && styles.notificationTitleUnread]}>{notification.title}</Text>
-              {!notification.is_read && <View style={styles.unreadDot} />}
-            </View>
-            <Text style={styles.notificationMessage}>{notification.message}</Text>
-            <Text style={styles.notificationTime}>{formatTimestamp(notification.created_at)}</Text>
-          </View>
-          <TouchableOpacity style={styles.deleteButton} onPress={() => deleteNotification(notification.notification_id)}>
-            <Trash2 size={16} color="#94a3b8" />
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  if (isLoading) {
+    return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color="#32d74b" /></SafeAreaView>;
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.header}>
-        <View style={styles.headerContent}>
-          <Bell size={24} color="#ffffff" />
-          <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>Notifications</Text>
-            <Text style={styles.headerSubtitle}>{unreadCount > 0 ? `${unreadCount} unread notifications` : 'All caught up!'}</Text>
-          </View>
-        </View>
-        {unreadCount > 0 && (
-          <TouchableOpacity style={styles.markAllButton} onPress={markAllAsRead}>
-            <MarkAsRead size={16} color="#ffffff" /><Text style={styles.markAllButtonText}>Mark all read</Text>
-          </TouchableOpacity>
-        )}
+      <LinearGradient colors={['#32d74b', '#30d158']} style={styles.header}>
+        <Text style={styles.headerTitle}>Add New Restaurant</Text>
+        <Text style={styles.headerSubtitle}>Share your delicious food with the community</Text>
       </LinearGradient>
 
-      {isLoading ? (
-        <ActivityIndicator size="large" color="#8b5cf6" style={{ flex: 1 }} />
-      ) : (
-        <ScrollView
-          style={styles.content}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          showsVerticalScrollIndicator={false}
-        >
-          {notifications.length > 0 ? (
-            <View style={styles.notificationsContainer}>
-              {notifications.map(notification => (
-                <NotificationCard key={notification.notification_id} notification={notification} />
+      <KeyboardAvoidingView style={styles.formContainer} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">          
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Shop Photos *</Text>
+            <Text style={styles.sectionSubtitle}>Select one or more images. Choose one to be the main photo.</Text>
+
+            <View style={styles.imageListContainer}>
+              {selectedImages.map((image) => {
+                const isMain = image.uri === mainImageUri;
+                return (
+                  <View key={image.uri} style={[styles.imagePreviewWrapper, isMain && styles.mainImageWrapper]}>
+                    <Image source={{ uri: image.uri }} style={styles.previewImage} />
+                    
+                    {isMain && (
+                      <View style={styles.mainTag}>
+                        <Text style={styles.mainTagText}>Main</Text>
+                      </View>
+                    )}
+
+                    <View style={styles.imageActions}>
+                      {!isMain && (
+                        <TouchableOpacity style={styles.actionButton} onPress={() => setMainImageUri(image.uri)}>
+                          <Text style={styles.actionButtonText}>Make Main</Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity style={[styles.actionButton, styles.removeButton]} onPress={() => {
+                        setSelectedImages(prev => prev.filter(img => img.uri !== image.uri));
+                        if (isMain) {
+                          setMainImageUri(null);
+                        }
+                      }}>
+                        <X size={14} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
+              <ImageIcon size={32} color="#64748b" />
+              <Text style={styles.imagePickerText}>Tap to add images</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Basic Information</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Shop Name *</Text>
+              <TextInput style={styles.input} value={formData.name} onChangeText={(text) => updateField('name', text)} placeholder="Enter your restaurant name" placeholderTextColor="#94a3b8" />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Description</Text>
+              <TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={(text) => updateField('description', text)} placeholder="Describe your restaurant and signature dishes" placeholderTextColor="#94a3b8" multiline numberOfLines={4} textAlignVertical="top" />
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Location & Address *</Text>
+            <Text style={styles.sectionSubtitle}>Search for the address and fine-tune the pin on the map.</Text>
+            
+            <TouchableOpacity style={styles.addressInputButton} onPress={() => setIsAddressModalVisible(true)}>
+              <Search size={18} color="#64748b" />
+              <Text style={[styles.addressInputText, !formData.address && styles.addressInputPlaceholder]}>
+                {formData.address || 'Tap to search for an address'}
+              </Text>
+            </TouchableOpacity>
+            
+            <View style={styles.mapContainer}>
+                <MapView
+                    provider={PROVIDER_GOOGLE}
+                    style={styles.map}
+                    region={region}
+                    onRegionChangeComplete={setRegion}
+                    showsUserLocation={true}
+                >
+                    {location && (
+                      <Marker
+                        coordinate={location}
+                        draggable
+                        onDragEnd={(e) => setLocation(e.nativeEvent.coordinate)}
+                        title="Shop Location"
+                        description="Drag to adjust"
+                      />
+                    )}
+                </MapView>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Categories</Text>
+            <Text style={styles.sectionSubtitle}>Select one or more relevant categories.</Text>
+            <View style={styles.itemsContainer}>
+              {allCategories.map(item => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[styles.item, selectedCategoryIds.has(item.id) && styles.itemSelected]}
+                  onPress={() => handleToggleCategory(item.id)}
+                >
+                  <Text style={[styles.itemText, selectedCategoryIds.has(item.id) && styles.itemTextSelected]}>
+                    {item.name}
+                  </Text>
+                </TouchableOpacity>
               ))}
             </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Bell size={64} color="#cbd5e1" />
-              <Text style={styles.emptyStateTitle}>No Notifications</Text>
-              <Text style={styles.emptyStateText}>You're all caught up! New notifications will appear here.</Text>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Tags</Text>
+            <Text style={styles.sectionSubtitle}>Select tags that describe your shop (e.g., Halal, Vegetarian).</Text>
+            <View style={styles.itemsContainer}>
+              {allTags.map(item => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[styles.item, selectedTagIds.has(item.id) && styles.itemSelected]}
+                  onPress={() => handleToggleTag(item.id)}
+                >
+                  <Text style={[styles.itemText, selectedTagIds.has(item.id) && styles.itemTextSelected]}>
+                    {item.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          )}
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Contact Information</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Phone Number</Text>
+              <TextInput style={styles.input} value={formData.phone} onChangeText={(text) => updateField('phone', text)} placeholder="+60123456789" placeholderTextColor="#94a3b8" keyboardType="phone-pad" />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Business Hours</Text>
+              <TextInput style={styles.input} value={formData.hours} onChangeText={(text) => updateField('hours', text)} placeholder="e.g., Mon-Fri: 9AM-6PM" placeholderTextColor="#94a3b8" />
+            </View>
+          </View>
+
+          <TouchableOpacity style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]} onPress={submitShop} disabled={isSubmitting}>
+            <LinearGradient colors={['#32d74b', '#30d158']} style={styles.submitButtonGradient}>
+              {isSubmitting ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Upload size={20} color="#ffffff" />
+              )}
+              <Text style={styles.submitButtonText}>{isSubmitting ? 'Submitting...' : 'Submit for Review'}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
           <View style={styles.bottomSpacing} />
         </ScrollView>
-      )}
+      </KeyboardAvoidingView>
+
+      <Modal
+        visible={isAddressModalVisible}
+        animationType="slide"
+        onRequestClose={() => setIsAddressModalVisible(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Search Address</Text>
+            <TouchableOpacity onPress={() => setIsAddressModalVisible(false)}>
+              <X size={24} color="#64748b" />
+            </TouchableOpacity>
+          </View>
+          <View style={{ flex: 1 }}>
+            <PlacesInput
+              googleApiKey={GOOGLE_MAPS_API_KEY || ''}
+              onSelect={place => {
+                if (place.result?.geometry?.location) {
+                  const coords = {
+                    latitude: place.result.geometry.location.lat,
+                    longitude: place.result.geometry.location.lng,
+                  };
+                  setLocation(coords);
+                  setRegion({ ...region, ...coords });
+                  updateField('address', place.result.formatted_address || '');
+                }
+                setIsAddressModalVisible(false);
+              }}
+              queryCountries={['my']}
+              placeHolder={"Search for an address or business name"}
+              stylesContainer={{
+                  flex: 1,
+                  padding: 16,
+                  backgroundColor: '#f8fafc',
+              }}
+              stylesInput={{
+                  ...styles.input,
+                  marginBottom: 16,
+              }}
+              stylesList={{
+                borderColor: '#e2e8f0',
+                borderWidth: 1,
+                borderRadius: 12,
+                backgroundColor: '#ffffff',
+              }}
+              stylesItem={{
+                padding: 12,
+                borderBottomWidth: 1,
+                borderBottomColor: '#f1f5f9',
+              }}
+              stylesItemText={{
+                color: '#334155',
+                fontSize: 15,
+              }}
+              stylesLoader={{
+                marginTop: 20,
+              }}
+            />
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-// --- STYLES (UNCHANGED) ---
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
-  header: { paddingHorizontal: 20, paddingVertical: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerContent: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
-  headerText: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#ffffff' },
-  headerSubtitle: { fontSize: 14, color: '#e9d5ff', marginTop: 4 },
-  markAllButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, gap: 6 },
-  markAllButtonText: { color: '#ffffff', fontSize: 12, fontWeight: '500' },
-  content: { flex: 1 },
-  notificationsContainer: { padding: 20 },
-  notificationCard: { backgroundColor: '#ffffff', borderRadius: 12, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 },
-  notificationCardUnread: { borderLeftWidth: 4, borderLeftColor: '#8b5cf6', backgroundColor: '#fefefe' },
-  notificationHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  notificationIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#f8fafc', alignItems: 'center', justifyContent: 'center' },
-  notificationContent: { flex: 1 },
-  notificationTitleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 },
-  notificationTitle: { fontSize: 16, fontWeight: '600', color: '#64748b', flex: 1 },
-  notificationTitleUnread: { color: '#1e293b' },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#DC2626' },
-  notificationMessage: { fontSize: 14, color: '#64748b', lineHeight: 20, marginBottom: 8 },
-  notificationTime: { fontSize: 12, color: '#94a3b8' },
-  deleteButton: { padding: 4 },
-  emptyState: { alignItems: 'center', paddingVertical: 80, paddingHorizontal: 40 },
-  emptyStateTitle: { fontSize: 24, fontWeight: 'bold', color: '#64748b', marginTop: 24, marginBottom: 12 },
-  emptyStateText: { fontSize: 16, color: '#94a3b8', textAlign: 'center', lineHeight: 24 },
-  bottomSpacing: { height: 20 },
+    container: { flex: 1, backgroundColor: '#f8fafc' },
+    header: { paddingHorizontal: 20, paddingVertical: 24 },
+    headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#ffffff' },
+    headerSubtitle: { fontSize: 14, color: '#d1fae5', marginTop: 4 },
+    formContainer: { flex: 1 },
+    form: { flex: 1 },
+    section: { paddingHorizontal: 20, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+    sectionTitle: { fontSize: 18, fontWeight: '600', color: '#1e293b', marginBottom: 4 },
+    sectionSubtitle: { fontSize: 14, color: '#64748b', marginBottom: 16 },
+    inputGroup: { marginBottom: 16 },
+    inputLabel: { fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 8 },
+    input: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: '#1e293b' },
+    textArea: { height: 100, paddingTop: 14 },
+    imagePicker: { width: '100%', height: 120, borderWidth: 2, borderColor: '#cbd5e1', borderStyle: 'dashed', borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', gap: 8, marginTop: 16 },
+    imagePickerText: { fontSize: 16, color: '#64748b', fontWeight: '500' },
+    submitButton: { marginHorizontal: 20, marginTop: 20, borderRadius: 12, overflow: 'hidden' },
+    submitButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, gap: 8 },
+    submitButtonText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
+    submitButtonDisabled: { opacity: 0.7 },
+    bottomSpacing: { height: 40 },
+    imageListContainer: { marginBottom: 16, gap: 12 },
+    imagePreviewWrapper: { position: 'relative', width: '100%', height: 200, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent' },
+    mainImageWrapper: { borderColor: '#32d74b' },
+    previewImage: { width: '100%', height: '100%' },
+    mainTag: { position: 'absolute', top: 8, left: 8, backgroundColor: '#32d74b', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, zIndex: 1 },
+    mainTagText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+    imageActions: { position: 'absolute', bottom: 8, right: 8, flexDirection: 'row', gap: 8 },
+    actionButton: { backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+    actionButtonText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+    removeButton: { padding: 6, backgroundColor: 'rgba(239, 68, 68, 0.8)' },
+    itemsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+    item: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        backgroundColor: '#ffffff',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        borderRadius: 20,
+    },
+    itemSelected: {
+        backgroundColor: '#dcfce7',
+        borderColor: '#22c55e',
+    },
+    itemText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#334155',
+    },
+    itemTextSelected: {
+        color: '#166534',
+    },
+    mapContainer: {
+        height: 250,
+        borderRadius: 12,
+        overflow: 'hidden',
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        zIndex: 0,
+    },
+    map: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 1,
+    },
+    addressInputButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#ffffff',
+      borderWidth: 1,
+      borderColor: '#e2e8f0',
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      marginBottom: 16,
+      gap: 8,
+      zIndex: 2,
+    },
+    addressInputText: {
+      fontSize: 16,
+      color: '#1e293b',
+      flex: 1,
+    },
+    addressInputPlaceholder: {
+      color: '#94a3b8',
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: '#e2e8f0',
+      backgroundColor: '#ffffff',
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: '#1e293b',
+    },
 });

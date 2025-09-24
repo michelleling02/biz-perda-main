@@ -1,15 +1,15 @@
-// /app/(owner)/notifications.tsx
+// FILE: app/(owner)/notifications.tsx
 
 import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Bell, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Clock, Star, Eye, Heart, Trash2, BookMarked as MarkAsRead } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect, router } from 'expo-router';
-import { useSession, useUser } from '@clerk/clerk-expo';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { useFocusEffect } from 'expo-router';
+import { supabase } from '../../lib/supabase'; // Use our global Supabase client
+import { useAuth } from '../../contexts/AuthContext'; // Use our own AuthContext
 
-// --- TYPE DEFINITION FOR OUR LIVE NOTIFICATION DATA ---
+// --- TYPE DEFINITION (UNCHANGED) ---
 type Notification = {
   notification_id: number;
   recipient_user_id: string;
@@ -18,53 +18,35 @@ type Notification = {
   is_read: boolean;
   created_at: string;
   // We'll add these client-side for the UI
-  type?: string; // e.g., 'approval', 'review'
+  type?: string;
   icon?: React.ElementType;
   color?: string;
 };
 
-// Helper to map notification titles to icons and colors
+// Helper to map notification titles to icons and colors (UNCHANGED)
 const getNotificationStyle = (title: string) => {
   if (title.includes('Approved')) return { icon: CheckCircle, color: '#10b981', type: 'approval' };
   if (title.includes('Review')) return { icon: Star, color: '#fbbf24', type: 'review' };
   if (title.includes('Milestone')) return { icon: Eye, color: '#0891b2', type: 'milestone' };
   if (title.includes('Favorited')) return { icon: Heart, color: '#ef4444', type: 'favorite' };
   if (title.includes('Under Review')) return { icon: Clock, color: '#f59e0b', type: 'pending' };
-  return { icon: AlertCircle, color: '#8b5cf6', type: 'system' }; // Default
+  return { icon: AlertCircle, color: '#8b5cf6', type: 'system' };
 };
 
 export default function NotificationsScreen() {
-  const { session } = useSession();
-  const { user } = useUser();
+  // --- THIS IS THE FIX ---
+  // Get the user directly from our own Supabase AuthContext
+  const { session } = useAuth();
+  const user = session?.user;
+  // -----------------------
 
-  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Effect 1: Create the session-aware Supabase client
-  React.useEffect(() => {
-    if (session) {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      if (!supabaseUrl || !supabaseAnonKey) return;
-
-      const client = createClient(supabaseUrl, supabaseAnonKey, {
-        global: {
-          fetch: async (url, options = {}) => {
-            const token = await session.getToken({ template: 'supabase' });
-            const headers = new Headers(options.headers);
-            if (token) headers.set('Authorization', `Bearer ${token}`);
-            return fetch(url, { ...options, headers });
-          },
-        },
-      });
-      setSupabase(client);
-    }
-  }, [session]);
-
+  // The fetch function is now much simpler. It uses the global supabase client.
   const fetchNotifications = useCallback(async () => {
-    if (!supabase || !user) {
+    if (!user) {
       setIsLoading(false);
       return;
     }
@@ -77,12 +59,10 @@ export default function NotificationsScreen() {
 
       if (error) throw error;
 
-      // Map the data to include UI styles
       const styledNotifications = data.map(n => ({
         ...n,
         ...getNotificationStyle(n.title),
       }));
-
       setNotifications(styledNotifications);
 
     } catch (error: any) {
@@ -92,7 +72,7 @@ export default function NotificationsScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [supabase, user]);
+  }, [user]); // The dependency is now just the user object.
 
   useFocusEffect(
     useCallback(() => {
@@ -106,42 +86,26 @@ export default function NotificationsScreen() {
     fetchNotifications();
   };
 
+  // The rest of the functions (markAsRead, deleteNotification, etc.)
+  // already use the global supabase client and are correct.
   const markAsRead = async (id: number) => {
-    // Optimistically update the UI
-    setNotifications(prev =>
-      prev.map(notif =>
-        notif.notification_id === id ? { ...notif, is_read: true } : notif
-      )
-    );
-    // Update the database in the background
-    await supabase
-      ?.from('notifications')
-      .update({ is_read: true })
-      .eq('notification_id', id);
+    setNotifications(prev => prev.map(notif => notif.notification_id === id ? { ...notif, is_read: true } : notif));
+    await supabase.from('notifications').update({ is_read: true }).eq('notification_id', id);
   };
 
   const markAllAsRead = async () => {
-    if (!supabase || !user) return;
-
-    setNotifications(prev =>
-      prev.map(notif => ({ ...notif, is_read: true }))
-    );
-    await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('recipient_user_id', user.id)
-      .eq('is_read', false);
+    if (!user) return;
+    setNotifications(prev => prev.map(notif => ({ ...notif, is_read: true })));
+    await supabase.from('notifications').update({ is_read: true }).eq('recipient_user_id', user.id).eq('is_read', false);
   };
 
   const deleteNotification = async (id: number) => {
-    if (!supabase) return;
     setNotifications(prev => prev.filter(notif => notif.notification_id !== id));
-    await supabase
-      .from('notifications')
-      .delete()
-      .eq('notification_id', id);
+    await supabase.from('notifications').delete().eq('notification_id', id);
   };
 
+  // --- ALL RENDERING LOGIC AND STYLES ARE UNCHANGED ---
+  // (The rest of the file is identical to what you provided)
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -229,7 +193,6 @@ export default function NotificationsScreen() {
   );
 }
 
-// --- STYLES (UNCHANGED) ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   header: { paddingHorizontal: 20, paddingVertical: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

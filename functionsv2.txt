@@ -1,0 +1,275 @@
+✅ Functions to Keep (But Require Fixing)
+These functions are valuable, but they are currently contaminated with TEXT-based logic from the failed Clerk migration. They must be reverted to their UUID form.
+check_and_create_milestone_notifications: Correct. The logic is sound, but the owner_user_id and recipient_user_id columns it interacts with must be UUID.
+create_shop_with_links: NEEDS FIX. Currently uses auth.uid()::text. Must be changed back to use auth.uid() directly, as owner_user_id will be a UUID.
+get_all_approved_shops_with_details: Correct. This function is for public data and has no user-specific logic, so it's safe.
+get_customer_profile_stats: NEEDS FIX. The p_customer_id parameter must be changed from TEXT back to UUID.
+get_daily_engagement_stats (and its duplicates): NEEDS FIX. The p_owner_id parameter must be changed from TEXT back to UUID.
+get_daily_view_stats: NEEDS FIX. The p_owner_id parameter must be changed from TEXT back to UUID.
+get_owner_analytics_overview: NEEDS FIX. The p_owner_id parameter must be changed from TEXT back to UUID.
+get_owner_profile_stats (and its duplicates): NEEDS FIX. The p_owner_id parameter must be changed from TEXT back to UUID.
+get_owner_shops_with_stats: NEEDS FIX. The p_owner_id parameter must be changed from TEXT back to UUID.
+get_shop_details_with_relations: Correct. This is a public function based on shop_id.
+get_single_shop_details: Correct. This is a public function based on shop_id.
+is_admin: NEEDS FIX. Currently uses auth.uid()::text and compares role_id to a string '3'. Must be reverted to use auth.uid() and compare to the number 3.
+log_shop_view: NEEDS FIX. Currently uses auth.uid()::text. Must be reverted to use auth.uid() directly.
+search_shops: NEEDS FIX. Currently returns shop_id::text. This should return the native bigint type.
+search_shops_by_link: Correct. This is a public function.
+update_shop_links: NEEDS FIX. The authorization check auth.uid()::text must be reverted to auth.uid().
+update_shops_fts: Correct. This is an internal trigger function.
+handle_new_user: New function.
+❌ Functions to Delete
+These functions are remnants of the failed Clerk-first architecture or are redundant. They have no place in the new Supabase-native system.
+assign_user_roles: DELETE. This is obsolete. The new handle_new_user trigger will manage role creation automatically.
+create_profile_for_user: DELETE. This is the core of the old, broken system. It will be replaced by the handle_new_user trigger.
+create_user_profile_and_role: DELETE. This is the RPC the app was calling. It is now obsolete and will be replaced by the automatic trigger system.
+get_owner_dashboard_kpis: DELETE. This is a redundant analytics function. get_owner_profile_stats is sufficient.
+get_owner_engagement_chart: DELETE. This is a duplicate of get_daily_engagement_stats.
+get_owner_shop_views_chart: DELETE. This is a duplicate of get_daily_view_stats.
+is_owner: DELETE. This logic is better and more securely handled directly within RLS policies, not as a separate function.
+
+-- =====================================================================
+-- THE GREAT REVERSION SCRIPT (FUNCTIONS - FINAL)
+-- This script reverts all functions and related schemas to a
+-- Supabase-native UUID architecture.
+-- =====================================================================
+
+-- PRE-FLIGHT CHECK: Switch to the postgres role for full permissions.
+SET ROLE postgres;
+
+-- =====================================================================
+-- Step 1: Drop all obsolete, redundant, and soon-to-be-replaced functions.
+-- This cleans the slate to prevent any conflicts.
+-- =====================================================================
+DROP FUNCTION IF EXISTS public.assign_user_roles(text, text);
+DROP FUNCTION IF EXISTS public.create_profile_for_user(text);
+DROP FUNCTION IF EXISTS public.create_user_profile_and_role(text, text, text, text, text);
+DROP FUNCTION IF EXISTS public.get_owner_dashboard_kpis(text);
+DROP FUNCTION IF EXISTS public.get_owner_engagement_chart(text, date, date, text);
+DROP FUNCTION IF EXISTS public.get_owner_shop_views_chart(text, date, date, text);
+DROP FUNCTION IF EXISTS public.is_owner();
+DROP FUNCTION IF EXISTS public.log_shop_view(bigint);
+DROP FUNCTION IF EXISTS public.log_shop_view(integer, text);
+DROP FUNCTION IF EXISTS public.is_admin();
+DROP FUNCTION IF EXISTS public.create_shop_with_links(text, text, text, text, text, float8, float8, _int4, _int4);
+DROP FUNCTION IF EXISTS public.get_daily_view_stats(text, date, date, text);
+DROP FUNCTION IF EXISTS public.get_owner_analytics_overview(text, int4);
+DROP FUNCTION IF EXISTS public.get_customer_profile_stats(text);
+DROP FUNCTION IF EXISTS public.get_daily_engagement_stats(text, date, date, text);
+DROP FUNCTION IF EXISTS public.get_owner_profile_stats(text);
+DROP FUNCTION IF EXISTS public.get_owner_shops_with_stats(text);
+DROP FUNCTION IF EXISTS public.search_shops(text);
+DROP FUNCTION IF EXISTS public.update_shop_links(bigint, _int4, _int4);
+
+-- =====================================================================
+-- Step 2: Revert all user ID columns in your tables back to UUID.
+-- This is the core of the reversion. It will fail if invalid TEXT data exists.
+-- =====================================================================
+ALTER TABLE public.profiles ALTER COLUMN id TYPE uuid USING id::uuid;
+ALTER TABLE public.userroles ALTER COLUMN user_id TYPE uuid USING user_id::uuid;
+ALTER TABLE public.shops ALTER COLUMN owner_user_id TYPE uuid USING owner_user_id::uuid;
+ALTER TABLE public.reviews ALTER COLUMN user_id TYPE uuid USING user_id::uuid;
+ALTER TABLE public.shopfavourites ALTER COLUMN user_id TYPE uuid USING user_id::uuid;
+ALTER TABLE public.notifications ALTER COLUMN recipient_user_id TYPE uuid USING recipient_user_id::uuid;
+ALTER TABLE public.shopphotos ALTER COLUMN uploader_user_id TYPE uuid USING uploader_user_id::uuid;
+ALTER TABLE public.shopclaims ALTER COLUMN requesting_user_id TYPE uuid USING requesting_user_id::uuid;
+ALTER TABLE public.shopclaims ALTER COLUMN moderator_user_id TYPE uuid USING moderator_user_id::uuid;
+ALTER TABLE public.moderationhistory ALTER COLUMN moderator_user_id TYPE uuid USING moderator_user_id::uuid;
+ALTER TABLE public.userbanhistory ALTER COLUMN user_id TYPE uuid USING user_id::uuid;
+ALTER TABLE public.userbanhistory ALTER COLUMN moderator_user_id TYPE uuid USING moderator_user_id::uuid;
+ALTER TABLE public.shopviews ALTER COLUMN user_id TYPE uuid USING user_id::uuid;
+ALTER TABLE public.analyticsevents ALTER COLUMN user_id TYPE uuid USING user_id::uuid;
+
+-- =====================================================================
+-- Step 3: Recreate the essential functions with correct UUID logic.
+-- =====================================================================
+
+-- This is the NEW core function, triggered by Supabase Auth.
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_role_id bigint;
+BEGIN
+  -- Insert into profiles table from the new user data in auth.users
+  INSERT INTO public.profiles (id, name, email)
+  VALUES (new.id, new.raw_user_meta_data->>'fullName', new.email);
+
+  -- Find the role_id for the role name stored in metadata during signup
+  SELECT role_id INTO v_role_id FROM public.roles WHERE role_name = (new.raw_user_meta_data->>'role');
+
+  -- Insert into userroles table
+  IF v_role_id IS NOT NULL THEN
+    INSERT INTO public.userroles (user_id, role_id) VALUES (new.id, v_role_id);
+  ELSE
+    -- Default to 'Customer' (role_id 1) if not specified
+    INSERT INTO public.userroles (user_id, role_id) VALUES (new.id, 1);
+  END IF;
+  
+  RETURN new;
+END;
+$$;
+
+-- Create the trigger on the auth.users table. This makes profile creation automatic.
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users; -- Clean up old trigger if it exists
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- Recreate is_admin with correct types (UUID and integer).
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.userroles WHERE user_id = auth.uid() AND role_id = 3
+  );
+$$;
+
+-- Recreate analytics functions with UUID parameters.
+CREATE OR REPLACE FUNCTION public.get_customer_profile_stats(p_customer_id uuid)
+RETURNS TABLE(total_favorites bigint, total_reviews bigint, total_visited bigint)
+LANGUAGE sql STABLE AS $$
+  SELECT
+    (SELECT COUNT(*) FROM shopfavourites WHERE user_id = p_customer_id),
+    (SELECT COUNT(*) FROM reviews WHERE user_id = p_customer_id),
+    (SELECT COUNT(DISTINCT shop_id) FROM shopviews WHERE user_id = p_customer_id);
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_daily_engagement_stats(p_owner_id uuid, p_start_date date, p_end_date date)
+RETURNS TABLE(period_label text, total_views bigint, total_favorites bigint, total_reviews bigint)
+LANGUAGE plpgsql STABLE AS $$
+BEGIN
+    RETURN QUERY
+    SELECT to_char(d.period_start, 'YYYY-MM-DD'), COUNT(DISTINCT sv.view_id), COUNT(DISTINCT sf.user_id), COUNT(DISTINCT r.review_id)
+    FROM generate_series(p_start_date, p_end_date, '1 day'::interval) AS d(period_start)
+    LEFT JOIN shops s ON s.owner_user_id = p_owner_id
+    LEFT JOIN shopviews sv ON sv.shop_id = s.shop_id AND sv.viewed_at::date = d.period_start
+    LEFT JOIN shopfavourites sf ON sf.shop_id = s.shop_id AND sf.created_at::date = d.period_start
+    LEFT JOIN reviews r ON r.shop_id = s.shop_id AND r.created_at::date = d.period_start
+    GROUP BY d.period_start ORDER BY d.period_start;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_daily_view_stats(p_owner_id uuid, p_start_date date, p_end_date date, p_group_by_period text)
+RETURNS TABLE(view_date text, day_name text, total_views bigint)
+LANGUAGE sql STABLE AS $$
+    WITH date_series AS (SELECT generate_series(date_trunc(p_group_by_period, p_start_date), date_trunc(p_group_by_period, p_end_date), ('1 ' || p_group_by_period)::interval)::date AS period_start),
+    owner_shop_views AS (SELECT date_trunc(p_group_by_period, sv.viewed_at)::date AS view_date FROM public.shopviews sv JOIN public.shops s ON sv.shop_id = s.shop_id WHERE s.owner_user_id = p_owner_id AND sv.viewed_at::date BETWEEN p_start_date AND p_end_date)
+    SELECT to_char(ds.period_start, 'YYYY-MM-DD'), CASE WHEN p_group_by_period = 'day' THEN to_char(ds.period_start, 'Dy') WHEN p_group_by_period = 'week' THEN 'W' || to_char(ds.period_start, 'WW') WHEN p_group_by_period = 'month' THEN to_char(ds.period_start, 'Mon') ELSE to_char(ds.period_start, 'Dy') END, COUNT(osv.view_date)
+    FROM date_series ds LEFT JOIN owner_shop_views osv ON ds.period_start = osv.view_date
+    GROUP BY ds.period_start ORDER BY ds.period_start ASC;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_owner_analytics_overview(p_owner_id uuid, p_period_days integer)
+RETURNS TABLE(total_views bigint, total_favorites bigint, avg_rating numeric, total_reviews bigint)
+LANGUAGE sql STABLE AS $$
+  SELECT COUNT(DISTINCT sv.view_id), COUNT(DISTINCT sf.user_id), AVG(r.rating), COUNT(DISTINCT r.review_id)
+  FROM shops s
+  LEFT JOIN shopviews sv ON s.shop_id = sv.shop_id AND sv.viewed_at >= (NOW() - (p_period_days || ' days')::interval)
+  LEFT JOIN shopfavourites sf ON s.shop_id = sf.shop_id AND sf.created_at >= (NOW() - (p_period_days || ' days')::interval)
+  LEFT JOIN reviews r ON s.shop_id = r.shop_id AND r.created_at >= (NOW() - (p_period_days || ' days')::interval)
+  WHERE s.owner_user_id = p_owner_id;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_owner_profile_stats(p_owner_id uuid)
+RETURNS TABLE(total_shops bigint, total_views bigint, total_favorites bigint, avg_rating numeric)
+LANGUAGE sql STABLE AS $$
+  SELECT COUNT(DISTINCT s.shop_id), COUNT(DISTINCT v.view_id), COUNT(DISTINCT f.user_id), AVG(r.rating)
+  FROM shops s
+  LEFT JOIN shopviews v ON s.shop_id = v.shop_id
+  LEFT JOIN shopfavourites f ON s.shop_id = f.shop_id
+  LEFT JOIN reviews r ON s.shop_id = r.shop_id
+  WHERE s.owner_user_id = p_owner_id;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_owner_shops_with_stats(p_owner_id uuid)
+RETURNS TABLE(shop_id integer, created_at timestamp with time zone, name character varying, description text, address text, operating_hours jsonb, phone_number character varying, owner_user_id uuid, status status, total_views bigint, total_favorites bigint, average_rating numeric)
+LANGUAGE sql STABLE AS $$
+  SELECT s.shop_id, s.created_at, s.name, s.description, s.address, s.operating_hours::jsonb, s.phone_number, s.owner_user_id, s.status, COUNT(DISTINCT v.user_id), COUNT(DISTINCT f.user_id), AVG(r.rating)
+  FROM shops s
+  LEFT JOIN shopviews v ON s.shop_id = v.shop_id
+  LEFT JOIN shopfavourites f ON s.shop_id = f.shop_id
+  LEFT JOIN reviews r ON s.shop_id = r.shop_id
+  WHERE s.owner_user_id = p_owner_id
+  GROUP BY s.shop_id;
+$$;
+
+-- Recreate other functions with correct UUID logic.
+CREATE OR REPLACE FUNCTION public.create_shop_with_links(p_name text, p_description text, p_address text, p_phone_number text, p_operating_hours text, p_latitude double precision, p_longitude double precision, p_category_ids integer[], p_tag_ids integer[])
+RETURNS bigint LANGUAGE plpgsql AS $$
+DECLARE
+    new_shop_id BIGINT;
+BEGIN
+    INSERT INTO public.shops (name, description, address, phone_number, operating_hours, location, owner_user_id, status)
+    VALUES (p_name, p_description, p_address, p_phone_number, p_operating_hours, ST_MakePoint(p_longitude, p_latitude)::geography, auth.uid(), 'Pending')
+    RETURNING shop_id INTO new_shop_id;
+
+    IF array_length(p_category_ids, 1) > 0 THEN
+        INSERT INTO public.shopcategorylink (shop_id, category_id) SELECT new_shop_id, unnest(p_category_ids);
+    END IF;
+
+    IF array_length(p_tag_ids, 1) > 0 THEN
+        INSERT INTO public.shoptaglink (shop_id, tag_id) SELECT new_shop_id, unnest(p_tag_ids);
+    END IF;
+
+    RETURN new_shop_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.update_shop_links(p_shop_id bigint, p_category_ids integer[], p_tag_ids integer[])
+RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+    IF NOT (auth.uid() = (SELECT owner_user_id FROM public.shops WHERE shop_id = p_shop_id)) THEN
+        RAISE EXCEPTION 'You are not authorized to edit this shop.';
+    END IF;
+
+    DELETE FROM public.shopcategorylink WHERE shop_id = p_shop_id;
+    DELETE FROM public.shoptaglink WHERE shop_id = p_shop_id;
+
+    IF array_length(p_category_ids, 1) > 0 THEN
+        INSERT INTO public.shopcategorylink (shop_id, category_id) SELECT p_shop_id, unnest(p_category_ids);
+    END IF;
+
+    IF array_length(p_tag_ids, 1) > 0 THEN
+        INSERT INTO public.shoptaglink (shop_id, tag_id) SELECT p_shop_id, unnest(p_tag_ids);
+    END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.log_shop_view(p_shop_id_to_log bigint)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  INSERT INTO public.shopviews(shop_id, user_id, viewed_at)
+  VALUES(p_shop_id_to_log, auth.uid(), NOW())
+  ON CONFLICT (shop_id, user_id) DO UPDATE SET viewed_at = NOW();
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.search_shops(search_term text)
+RETURNS TABLE(shop_id bigint, name text, description text, address text, status status, avg_rating numeric, review_count bigint, display_photo_url text)
+LANGUAGE plpgsql STABLE AS $$
+BEGIN
+    RETURN QUERY
+    WITH shop_search AS (
+        SELECT s.shop_id, s.name, s.description, s.address, s.status
+        FROM shops s
+        WHERE s.name_desc_fts @@ plainto_tsquery('english', search_term) AND s.status = 'Approved'
+    ), shop_reviews AS (
+        SELECT r.shop_id, AVG(r.rating) as avg_rating, COUNT(r.rating) as review_count
+        FROM reviews r WHERE r.shop_id IN (SELECT ss.shop_id FROM shop_search ss)
+        GROUP BY r.shop_id
+    ), shop_photos AS (
+        SELECT p.shop_id, p.photo_url
+        FROM shopphotos p WHERE p.shop_id IN (SELECT ss.shop_id FROM shop_search ss) AND p.type = 'Main'
+    )
+    SELECT ss.shop_id, ss.name, ss.description, ss.address, ss.status, COALESCE(sr.avg_rating, 0), COALESCE(sr.review_count, 0), sp.photo_url
+    FROM shop_search ss
+    LEFT JOIN shop_reviews sr ON ss.shop_id = sr.shop_id
+    LEFT JOIN shop_photos sp ON ss.shop_id = sp.shop_id;
+END;
+$$;
+
+-- =====================================================================
+-- POST-FLIGHT CHECK: Revert role back to default.
+-- =====================================================================
+SET ROLE authenticator;

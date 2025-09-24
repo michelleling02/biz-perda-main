@@ -1,19 +1,15 @@
-// app/(owner)/shop-details.tsx
-
 import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Alert, TouchableOpacity, Image, FlatList, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
-import { useSession, useUser } from '@clerk/clerk-expo';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { ArrowLeft, Star, User, MapPin, Phone, Clock, Eye, Heart, Tag, Folder } from 'lucide-react-native'; // Added Tag and Folder icons
+import { supabase } from '../../lib/supabase'; // Correct: Use the global Supabase client
+import { ArrowLeft, Star, User, MapPin, Phone, Clock, Tag, Folder } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
-// --- UPDATED TYPE DEFINITIONS ---
+// --- TYPE DEFINITIONS (Unchanged) ---
 type Review = { review_id: number; comment: string; rating: number; created_at: string; profiles: { name: string } | null; };
 type ShopPhoto = { photo_id: number; signed_url: string; };
-// This now includes categories and tags
 type ShopDetails = { 
   shop_id: number; 
   name: string; 
@@ -21,87 +17,59 @@ type ShopDetails = {
   address: string; 
   phone_number: string; 
   operating_hours: string; 
-  // Added new fields
   categories: string[] | null;
   tags: string[] | null;
 };
 
 export default function OwnerShopDetailsScreen() {
   const { shopId } = useLocalSearchParams<{ shopId: string }>();
-  const { session } = useSession();
-  const { user } = useUser();
 
-  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
+  // State remains the same
   const [shop, setShop] = useState<ShopDetails | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [photos, setPhotos] = useState<ShopPhoto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Effect 1: Create the session-aware Supabase client
-  React.useEffect(() => {
-    if (session) {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      if (!supabaseUrl || !supabaseAnonKey) return;
-
-      const client = createClient(supabaseUrl, supabaseAnonKey, {
-        global: {
-          fetch: async (url, options = {}) => {
-            const token = await session.getToken({ template: 'supabase' });
-            const headers = new Headers(options.headers);
-            if (token) headers.set('Authorization', `Bearer ${token}`);
-            return fetch(url, { ...options, headers });
-          },
-        },
-      });
-      setSupabase(client);
-    }
-  }, [session]);
-
   useFocusEffect(
     useCallback(() => {
       async function fetchAllData() {
-        if (!shopId || !supabase) {
+        if (!shopId) {
           Alert.alert("Error", "No shop ID provided.");
           setIsLoading(false);
+          router.back();
           return;
         }
 
         try {
           setIsLoading(true);
           
-          // --- THIS IS THE MAIN CHANGE ---
-          // 1. Fetch main details, categories, and tags using our new RPC function
-          const { data: shopData, error: shopError } = await supabase
-            .rpc('get_shop_details_with_relations', { p_shop_id: Number(shopId) })
-            .single();
+          // Fetch all data in parallel using the global supabase client
+          const [shopDetailsRes, reviewsRes, photosRes] = await Promise.all([
+            supabase.rpc('get_shop_details_with_relations', { p_shop_id: Number(shopId) }).single(),
+            supabase.from('reviews').select(`review_id, comment, rating, created_at, profiles ( name )`).eq('shop_id', shopId),
+            supabase.from('shopphotos').select('photo_id, photo_url').eq('shop_id', shopId)
+          ]);
 
-          if (shopError) throw shopError;
-          setShop(shopData as ShopDetails | null);
+          // Error handling
+          if (shopDetailsRes.error) throw shopDetailsRes.error;
+          if (reviewsRes.error) throw reviewsRes.error;
+          if (photosRes.error) throw photosRes.error;
 
-          // 2. Fetch reviews separately (this logic remains the same)
-          const { data: reviewsData, error: reviewsError } = await supabase
-            .from('reviews')
-            .select(`review_id, comment, rating, created_at, profiles ( name )`)
-            .eq('shop_id', shopId);
+          // Set shop details
+          setShop(shopDetailsRes.data as ShopDetails | null);
+          
+          // Set reviews
+          setReviews((reviewsRes.data as unknown as Review[]) || []);
 
-          if (reviewsError) throw reviewsError;
-          setReviews((reviewsData as unknown as Review[]) || []);
-
-          // 3. Fetch photos and get signed URLs (this logic remains the same)
-          const { data: photoPaths, error: photosError } = await supabase
-            .from('shopphotos')
-            .select('photo_id, photo_url')
-            .eq('shop_id', shopId);
-          if (photosError) throw photosError;
-
+          // Fetch signed URLs for photos
+          const photoPaths = photosRes.data || [];
           const signedPhotos = await Promise.all(
-            (photoPaths || []).map(async (photo) => {
+            photoPaths.map(async (photo) => {
               const { data: signedUrlData } = await supabase.storage
                 .from('shop-images')
-                .createSignedUrl(photo.photo_url, 3600);
+                .createSignedUrl(photo.photo_url, 3600); // 1 hour expiry
               return { photo_id: photo.photo_id, signed_url: signedUrlData?.signedUrl || 'https://placehold.co/600x400?text=No+Image' };
-            }  )
+            } )
           );
           setPhotos(signedPhotos);
 
@@ -115,14 +83,17 @@ export default function OwnerShopDetailsScreen() {
 
       fetchAllData();
 
+      // Cleanup function to reset state when leaving the screen
       return () => {
         setIsLoading(true);
         setShop(null);
         setReviews([]);
         setPhotos([]);
       };
-    }, [shopId, supabase])
+    }, [shopId]) // Dependency is only on shopId
   );
+
+  // --- The rest of the component (rendering logic) is unchanged ---
 
   const renderStars = (rating: number) => {
     const stars = [];
@@ -139,19 +110,29 @@ export default function OwnerShopDetailsScreen() {
   if (!shop) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}><TouchableOpacity onPress={() => router.back()} style={styles.backButton}><ArrowLeft size={24} color="#1e293b" /></TouchableOpacity><Text style={styles.headerTitle}>Shop Not Found</Text></View>
-        <View style={styles.notFoundContainer}><Text>The requested shop could not be found.</Text></View>
+        <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <ArrowLeft size={24} color="#1e293b" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Shop Not Found</Text>
+        </View>
+        <View style={styles.notFoundContainer}>
+            <Text>The requested shop could not be found.</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}><TouchableOpacity onPress={() => router.back()} style={styles.backButton}><ArrowLeft size={24} color="#1e293b" /></TouchableOpacity><Text style={styles.headerTitle} numberOfLines={1}>{shop.name}</Text></View>
-      <ScrollView style={styles.content}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ArrowLeft size={24} color="#1e293b" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1}>{shop.name}</Text>
+      </View>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         
-        {/* Performance section removed as it's not returned by the new function. We can add it back if needed. */}
-
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Photo Gallery</Text>
           <FlatList
@@ -161,13 +142,14 @@ export default function OwnerShopDetailsScreen() {
             renderItem={({ item }) => <Image source={{ uri: item.signed_url }} style={styles.galleryImage} />}
             showsHorizontalScrollIndicator={false}
             ListEmptyComponent={<Text style={styles.emptyText}>No photos uploaded.</Text>}
+            contentContainerStyle={{ paddingLeft: 20 }}
+            style={{ marginHorizontal: -20 }}
           />
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Shop Information</Text>
           
-          {/* --- NEW: Categories Section --- */}
           {shop.categories && shop.categories.length > 0 && (
             <View style={styles.infoRow}>
               <Folder size={20} color="#64748b" />
@@ -181,7 +163,6 @@ export default function OwnerShopDetailsScreen() {
             </View>
           )}
 
-          {/* --- NEW: Tags Section --- */}
           {shop.tags && shop.tags.length > 0 && (
             <View style={styles.infoRow}>
               <Tag size={20} color="#64748b" />
@@ -210,7 +191,13 @@ export default function OwnerShopDetailsScreen() {
           {reviews.length > 0 ? (
             reviews.map(review => (
               <View key={review.review_id} style={styles.reviewCard}>
-                <View style={styles.reviewHeader}><View style={styles.reviewAuthor}><User size={16} color="#4f46e5" /><Text style={styles.reviewAuthorName}>{review.profiles?.name || 'A User'}</Text></View>{renderStars(review.rating)}</View>
+                <View style={styles.reviewHeader}>
+                    <View style={styles.reviewAuthor}>
+                        <User size={16} color="#4f46e5" />
+                        <Text style={styles.reviewAuthorName}>{review.profiles?.name || 'A User'}</Text>
+                    </View>
+                    {renderStars(review.rating)}
+                </View>
                 <Text style={styles.reviewComment}>{review.comment}</Text>
                 <Text style={styles.reviewDate}>{new Date(review.created_at).toLocaleDateString()}</Text>
               </View>
@@ -224,12 +211,11 @@ export default function OwnerShopDetailsScreen() {
   );
 }
 
-// --- ADDED NEW STYLES ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
   backButton: { padding: 8 },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '600', color: '#1e293b', marginHorizontal: 10 },
+  headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', color: '#1e293b', textAlign: 'center', marginRight: 32 },
   content: { flex: 1 },
   section: { marginBottom: 24, paddingHorizontal: 20 },
   sectionTitle: { fontSize: 20, fontWeight: 'bold', color: '#1e293b', marginBottom: 16 },
@@ -246,8 +232,6 @@ const styles = StyleSheet.create({
   reviewDate: { fontSize: 12, color: '#94a3b8', textAlign: 'right' },
   emptyText: { fontStyle: 'italic', color: '#64748b', padding: 10 },
   notFoundContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  
-  // Badge styles
   badgeContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, flex: 1 },
   badge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16 },
   badgeText: { fontSize: 12, fontWeight: '500' },

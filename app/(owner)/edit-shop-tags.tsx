@@ -1,17 +1,12 @@
-// app/(owner)/edit-shop-tags.tsx
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useSession, useUser } from '@clerk/clerk-expo';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { supabase } from '../../lib/supabase'; // Correct: Use the global Supabase client
 import { ArrowLeft, Check } from 'lucide-react-native';
 
-// --- TYPES ---
-// Use a generic 'pk' for the primary key to handle both category_id and tag_id
+// --- TYPES (Unchanged) ---
 type Item = { pk: number; name: string; };
-
 type ShopLinks = {
   categories: string[] | null;
   tags: string[] | null;
@@ -19,55 +14,54 @@ type ShopLinks = {
 
 export default function EditShopTagsScreen() {
   const { shopId } = useLocalSearchParams<{ shopId: string }>();
-  const { session } = useSession();
-  const { user } = useUser();
 
-  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
+  // State is simplified, no need for a local supabase client
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-
   const [allCategories, setAllCategories] = useState<Item[]>([]);
   const [allTags, setAllTags] = useState<Item[]>([]);
-
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<Set<number>>(new Set());
   const [selectedTagIds, setSelectedTagIds] = useState<Set<number>>(new Set());
 
+  // The fetchData function is now simpler and uses the global supabase client.
   const fetchData = useCallback(async () => {
-    if (!shopId) return;
+    if (!shopId) {
+      Alert.alert("Error", "Shop ID is missing.");
+      router.back();
+      return;
+    }
     try {
       setIsLoading(true);
       
+      // Fetch all data in parallel
       const [categoriesRes, tagsRes, shopLinksRes] = await Promise.all([
         supabase.from('categories').select('category_id, name'),
         supabase.from('tags').select('tag_id, tag_name'),
         supabase.rpc('get_shop_details_with_relations', { p_shop_id: Number(shopId) }).single(),
       ]);
 
+      // Error handling
       if (categoriesRes.error) throw categoriesRes.error;
       if (tagsRes.error) throw tagsRes.error;
       if (shopLinksRes.error) throw shopLinksRes.error;
 
       // Map the database columns to our generic 'Item' type
       const allCategoriesData: Item[] = (categoriesRes.data || []).map(c => ({ pk: c.category_id, name: c.name }));
-      const allTagsData: Item[] = (tagsRes.data || []).map(t => ({ pk: t.tag_id, name: t.tag_name })); // <-- CORRECTED
+      const allTagsData: Item[] = (tagsRes.data || []).map(t => ({ pk: t.tag_id, name: t.tag_name }));
 
       setAllCategories(allCategoriesData);
       setAllTags(allTagsData);
 
+      // Determine which tags and categories are currently selected
       const shopLinksData = shopLinksRes.data as ShopLinks;
       const currentCategoryNames = shopLinksData?.categories || [];
       const currentTagNames = shopLinksData?.tags || [];
 
-      // Use the correctly mapped data to find the initial IDs
       const initialCategoryIds = new Set(
-        allCategoriesData
-          .filter(cat => currentCategoryNames.includes(cat.name))
-          .map(cat => cat.pk)
+        allCategoriesData.filter(cat => currentCategoryNames.includes(cat.name)).map(cat => cat.pk)
       );
       const initialTagIds = new Set(
-        allTagsData
-          .filter(tag => currentTagNames.includes(tag.name))
-          .map(tag => tag.pk)
+        allTagsData.filter(tag => currentTagNames.includes(tag.name)).map(tag => tag.pk)
       );
 
       setSelectedCategoryIds(initialCategoryIds);
@@ -78,12 +72,14 @@ export default function EditShopTagsScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [shopId]);
+  }, [shopId]); // Dependency is only on shopId
 
+  // Use a standard useEffect to call fetchData
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  // Toggle functions remain the same
   const handleToggleCategory = (id: number) => {
     setSelectedCategoryIds(prev => {
       const newSet = new Set(prev);
@@ -102,10 +98,12 @@ export default function EditShopTagsScreen() {
     });
   };
 
+  // Save function is now simpler
   const handleSaveChanges = async () => {
-    if (!shopId || !supabase) return;
+    if (!shopId) return;
     setIsSaving(true);
     try {
+      // Call the RPC function to update the links in the database
       const { error } = await supabase.rpc('update_shop_links', {
         p_shop_id: Number(shopId),
         p_category_ids: Array.from(selectedCategoryIds),
@@ -124,8 +122,14 @@ export default function EditShopTagsScreen() {
     }
   };
 
+  // --- The rest of the component (rendering logic) is unchanged ---
+
   if (isLoading) {
-    return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color="#4f46e5" /></SafeAreaView>;
+    return (
+        <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+            <ActivityIndicator size="large" color="#4f46e5" />
+        </SafeAreaView>
+    );
   }
 
   return (
@@ -228,7 +232,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#DC2626',
+    backgroundColor: '#4f46e5',
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,

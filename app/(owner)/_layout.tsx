@@ -89,6 +89,12 @@ export default function OwnerTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="edit-shop-tags"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
         name="edit-profile" // Add the entry for edit-profile
         options={{
           href: null,

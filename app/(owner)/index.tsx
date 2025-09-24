@@ -14,19 +14,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Store, Eye, Heart, Star, TrendingUp, CheckCircle, Clock, Edit, BarChart3, ChefHat, AlertCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
-import { useSession, useUser } from '@clerk/clerk-expo';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
-// Define the TypeScript type for our shop data
+// Type definitions
 type ShopWithStats = {
   shop_id: number;
   created_at: string;
   name: string;
-  description: string;
-  address: string;
-  operating_hours: string;
-  phone_number: string;
-  owner_user_id: string;
   status: string;
   total_views: number | null;
   total_favorites: number | null;
@@ -34,78 +29,50 @@ type ShopWithStats = {
   display_photo_url?: string;
 };
 
-export default function OwnerDashboard() {
-  const { session } = useSession();
-  const { user } = useUser();
+type DashboardOverview = {
+  total_shops: number;
+  total_views: number;
+  total_favorites: number;
+  overall_avg_rating: number;
+};
 
-  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
+export default function OwnerDashboard() {
+  const { user } = useAuth();
+  
   const [ownerProfile, setOwnerProfile] = useState<any>(null);
   const [ownedShops, setOwnedShops] = useState<ShopWithStats[]>([]);
-  const [stats, setStats] = useState({ totalViews: 0, totalFavorites: 0, avgRating: 0 });
-  
+  const [overviewStats, setOverviewStats] = useState<DashboardOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Effect 1: Create the session-aware Supabase client
-  React.useEffect(() => {
-    if (session) {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      if (!supabaseUrl || !supabaseAnonKey) return;
-
-      const client = createClient(supabaseUrl, supabaseAnonKey, {
-        global: {
-          fetch: async (url, options = {}) => {
-            const token = await session.getToken({ template: 'supabase' });
-            const headers = new Headers(options.headers);
-            if (token) headers.set('Authorization', `Bearer ${token}`);
-            return fetch(url, { ...options, headers });
-          },
-        },
-      });
-      setSupabase(client);
-    }
-  }, [session]);
-
   const fetchOwnerData = useCallback(async () => {
-    if (!supabase || !user) {
+    if (!user) {
       setIsLoading(false);
       return;
     }
 
     try {
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, name')
-        .eq('id', user.id)
-        .single();
-      
-      if (profileError) throw profileError;
-      setOwnerProfile(profileData);
+      // We now only need two calls: one for the profile name, and one for ALL data.
+      const [profileRes, overviewRes, shopsListRes] = await Promise.all([
+        supabase.from('profiles').select('name').eq('id', user.id).single(),
+        supabase.rpc('get_owner_dashboard_stats', { p_owner_id: user.id }).single(),
+        supabase.rpc('get_owner_shops_with_stats', { p_owner_id: user.id })
+      ]);
 
-      const { data: shopsData, error: shopsError } = await supabase
-        .rpc('get_owner_shops_with_stats', { p_owner_id: user.id });
+      if (profileRes.error) throw profileRes.error;
+      setOwnerProfile(profileRes.data);
 
-      if (shopsError) {
-        console.error("Supabase RPC failed:", JSON.stringify(shopsError, null, 2));
-        throw shopsError;
-      }
+      if (overviewRes.error) throw overviewRes.error;
+      setOverviewStats(overviewRes.data as DashboardOverview);
+
+      if (shopsListRes.error) throw shopsListRes.error;
 
       const shopsWithPhotos = await Promise.all(
-        (shopsData || []).map(async (shop: ShopWithStats) => {
-          const { data: photoData } = await supabase
-            .from('shopphotos')
-            .select('photo_url')
-            .eq('shop_id', shop.shop_id)
-            .eq('type', 'Main')
-            .limit(1)
-            .single();
-          
+        (shopsListRes.data || []).map(async (shop: ShopWithStats) => {
+          const { data: photoData } = await supabase.from('shopphotos').select('photo_url').eq('shop_id', shop.shop_id).eq('type', 'Main').limit(1).single();
           let displayUrl = 'https://placehold.co/400x200/e2e8f0/64748b?text=No+Image';
-          if (photoData?.photo_url) {
-            const { data: signedUrlData } = await supabase.storage
-              .from('shop-images')
-              .createSignedUrl(photoData.photo_url, 3600);
+          if (photoData?.photo_url ) {
+            const { data: signedUrlData } = await supabase.storage.from('shop-images').createSignedUrl(photoData.photo_url, 3600);
             displayUrl = signedUrlData?.signedUrl || displayUrl;
           }
           return { ...shop, display_photo_url: displayUrl };
@@ -113,33 +80,25 @@ export default function OwnerDashboard() {
       );
       setOwnedShops(shopsWithPhotos);
 
-      const totalViews = shopsData.reduce((acc: number, shop: ShopWithStats) => acc + (shop.total_views || 0), 0);
-      const totalFavorites = shopsData.reduce((acc: number, shop: ShopWithStats) => acc + (shop.total_favorites || 0), 0);
-      const shopsWithRatings = shopsData.filter((shop: ShopWithStats) => shop.average_rating !== null);
-      const totalAvgRating = shopsWithRatings.reduce((acc: number, shop: ShopWithStats) => acc + (shop.average_rating || 0), 0);
-      
-      setStats({
-        totalViews,
-        totalFavorites,
-        avgRating: shopsWithRatings.length > 0 ? totalAvgRating / shopsWithRatings.length : 0,
-      });
-
     } catch (error: any) {
       console.error("Error fetching owner data:", error);
-      Alert.alert("Error", "Could not fetch your dashboard data.");
+      Alert.alert("Error", "Could not fetch your dashboard data: " + error.message);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [supabase, user]);
+  }, [user]);
 
   useFocusEffect(
     useCallback(() => {
-      setIsLoading(true);
-      fetchOwnerData();
-    }, [fetchOwnerData])
+      if(user) {
+        setIsLoading(true);
+        fetchOwnerData();
+      }
+    }, [user, fetchOwnerData])
   );
 
+  // The rest of the file is unchanged.
   const onRefresh = () => {
     setRefreshing(true);
     fetchOwnerData();
@@ -200,7 +159,6 @@ export default function OwnerDashboard() {
             <View style={styles.shopStat}><Heart size={14} color="#ef4444" /><Text style={styles.shopStatValue}>{favorites}</Text></View>
             <View style={styles.shopStat}><Star size={14} color="#fbbf24" /><Text style={styles.shopStatValue}>{shopAvgRating}</Text></View>
           </View>
-          <Text style={styles.lastUpdated}>Created: {new Date(shop.created_at).toLocaleDateString()}</Text>
           <TouchableOpacity 
             style={styles.editButton} 
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -209,7 +167,7 @@ export default function OwnerDashboard() {
               router.push({ pathname: '/(owner)/edit-shop', params: { shopId: shop.shop_id } });
             }}
           >
-            <Edit size={16} color="#DC2626" />
+            <Edit size={16} color="#f97316" />
             <Text style={styles.editButtonText}>Edit Shop</Text>
           </TouchableOpacity>
         </View>
@@ -218,12 +176,12 @@ export default function OwnerDashboard() {
   };
 
   if (isLoading) {
-    return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color="#DC2626" style={{ flex: 1 }} /></SafeAreaView>;
+    return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color="#58508D" style={{ flex: 1 }} /></SafeAreaView>;
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.header}>
+      <LinearGradient colors={['#58508D', '#FF6361']} style={styles.header}>
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeText}>Welcome back,</Text>
           <Text style={styles.ownerName}>{ownerProfile?.name || 'Owner'}</Text>
@@ -235,12 +193,12 @@ export default function OwnerDashboard() {
         <View style={styles.statsContainer}>
           <Text style={styles.sectionTitle}>Performance Overview</Text>
           <View style={styles.statsGrid}>
-            <StatCard icon={ChefHat} title="Restaurants" value={ownedShops.length} color="#DC2626" subtitle="Total listings" />
-            <StatCard icon={Eye} title="Total Views" value={stats.totalViews.toLocaleString()} color="#3B4ECC" subtitle="All time" />
+            <StatCard icon={ChefHat} title="Restaurants" value={overviewStats?.total_shops ?? 0} color="#FF6361" subtitle="Total listings" />
+            <StatCard icon={Eye} title="Total Views" value={(overviewStats?.total_views ?? 0).toLocaleString()} color="#58508D" subtitle="All time" />
           </View>
           <View style={styles.statsGrid}>
-            <StatCard icon={Heart} title="Total Favorites" value={stats.totalFavorites} color="#DC2626" subtitle="Total saves" />
-            <StatCard icon={Star} title="Avg. Rating" value={stats.avgRating.toFixed(1)} color="#3B4ECC" subtitle="Across all shops" />
+            <StatCard icon={Heart} title="Total Favorites" value={overviewStats?.total_favorites ?? 0} color="#FF6361" subtitle="Total saves" />
+            <StatCard icon={Star} title="Avg. Rating" value={(overviewStats?.overall_avg_rating ?? 0).toFixed(1)} color="#58508D" subtitle="Across all shops" />
           </View>
         </View>
 
@@ -248,10 +206,10 @@ export default function OwnerDashboard() {
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(owner)/add-shop')}>
-              <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.actionCardGradient}><ChefHat size={24} color="#ffffff" /><Text style={styles.actionText}>Add New Restaurant</Text></LinearGradient>
+              <LinearGradient colors={['#58508D', '#FF6361']} style={styles.actionCardGradient}><ChefHat size={24} color="#ffffff" /><Text style={styles.actionText}>Add New Restaurant</Text></LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(owner)/analytics')}>
-              <LinearGradient colors={['#3B4ECC', '#DC2626']} style={styles.actionCardGradient}><TrendingUp size={24} color="#ffffff" /><Text style={styles.actionText}>View Analytics</Text></LinearGradient>
+              <LinearGradient colors={['#FF6361', '#58508D']} style={styles.actionCardGradient}><TrendingUp size={24} color="#ffffff" /><Text style={styles.actionText}>View Analytics</Text></LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
@@ -300,8 +258,7 @@ const styles = StyleSheet.create({
   shopStats: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12 },
   shopStat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   shopStatValue: { fontSize: 12, color: '#9B9B9B', fontWeight: '500' },
-  lastUpdated: { fontSize: 12, color: '#9B9B9B', marginBottom: 12, fontStyle: 'italic' },
-  editButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FEE2E2', paddingVertical: 8, borderRadius: 8, gap: 6, borderWidth: 1, borderColor: '#DC2626' },
-  editButtonText: { color: '#DC2626', fontSize: 14, fontWeight: '600' },
+  editButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF7ED', paddingVertical: 8, borderRadius: 8, gap: 6, borderWidth: 1, borderColor: '#f97316', marginTop: 8 },
+  editButtonText: { color: '#f97316', fontSize: 14, fontWeight: '600' },
   emptyText: { textAlign: 'center', color: '#64748b', marginTop: 20, fontStyle: 'italic', paddingHorizontal: 20 },
 });
