@@ -3,7 +3,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
-import { Home, Plus, BarChart3, Bell, User } from 'lucide-react-native';
+import { Chrome as Home, Plus, ChartBar as BarChart3, Bell, User } from 'lucide-react-native';
 import { useNotifications } from '../../contexts/NotificationContext';
 
 // A small component for the notification badge

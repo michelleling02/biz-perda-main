@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Home, MapPin, Heart, User } from 'lucide-react-native';
+import { Chrome as Home, MapPin, Heart, User } from 'lucide-react-native';
 import { Platform } from 'react-native';
 
 export default function CustomerTabLayout() {

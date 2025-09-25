@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Store, Eye, Heart, Star, TrendingUp, CheckCircle, Clock, Edit, BarChart3, ChefHat, AlertCircle } from 'lucide-react-native';
+import { Store, Eye, Heart, Star, TrendingUp, CircleCheck as CheckCircle, Clock, CreditCard as Edit, ChartBar as BarChart3, ChefHat, CircleAlert as AlertCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
