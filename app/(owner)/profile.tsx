@@ -104,7 +104,7 @@ export default function OwnerProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#f97316', '#ea580c']} style={styles.header}>
+      <LinearGradient colors={['#6366F1', '#8B5CF6']} style={styles.header}>
         <View style={styles.profileHeader}>
           <View style={styles.avatar}>
             {profile?.profilePhotoUrl ? (
@@ -127,12 +127,12 @@ export default function OwnerProfileScreen() {
         <View style={styles.statsContainer}>
           <Text style={styles.sectionTitle}>Business Overview</Text>
           <View style={styles.statsGrid}>
-            <StatCard icon={Store} title="Total Shops" value={stats?.total_shops ?? 0} color="#f97316" />
-            <StatCard icon={Eye} title="Total Views" value={(stats?.total_views ?? 0).toLocaleString()} color="#0891b2" />
+            <StatCard icon={Store} title="Total Shops" value={stats?.total_shops ?? 0} color="#EC4899" />
+            <StatCard icon={Eye} title="Total Views" value={(stats?.total_views ?? 0).toLocaleString()} color="#4F46E5" />
           </View>
           <View style={styles.statsGrid}>
-            <StatCard icon={Star} title="Avg Rating" value={(stats?.avg_rating ?? 0).toFixed(1)} color="#fbbf24" />
-            <StatCard icon={MapPin} title="Favorites" value={stats?.total_favorites ?? 0} color="#ef4444" />
+            <StatCard icon={Star} title="Avg Rating" value={(stats?.avg_rating ?? 0).toFixed(1)} color="#F59E0B" />
+            <StatCard icon={MapPin} title="Favorites" value={stats?.total_favorites ?? 0} color="#EF4444" />
           </View>
         </View>
 
@@ -147,15 +147,15 @@ export default function OwnerProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Notifications</Text>
           <View style={styles.menuContainer}>
-            <MenuItem icon={Bell} title="Push Notifications" rightContent={<Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} trackColor={{ false: '#d1d5db', true: '#f97316' }} />} />
-            <MenuItem icon={Mail} title="Marketing Emails" rightContent={<Switch value={marketingEmails} onValueChange={setMarketingEmails} trackColor={{ false: '#d1d5db', true: '#f97316' }} />} />
+            <MenuItem icon={Bell} title="Push Notifications" rightContent={<Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} trackColor={{ false: '#E2E8F0', true: '#4F46E5' }} />} />
+            <MenuItem icon={Mail} title="Marketing Emails" rightContent={<Switch value={marketingEmails} onValueChange={setMarketingEmails} trackColor={{ false: '#E2E8F0', true: '#4F46E5' }} />} />
           </View>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Privacy & Support</Text>
           <View style={styles.menuContainer}>
-            <MenuItem icon={MapPin} title="Location Services" rightContent={<Switch value={locationEnabled} onValueChange={setLocationEnabled} trackColor={{ false: '#d1d5db', true: '#f97316' }} />} />
+            <MenuItem icon={MapPin} title="Location Services" rightContent={<Switch value={locationEnabled} onValueChange={setLocationEnabled} trackColor={{ false: '#E2E8F0', true: '#4F46E5' }} />} />
             <MenuItem icon={Shield} title="Privacy Policy" onPress={() => console.log('Navigate to privacy policy')} />
             <MenuItem icon={HelpCircle} title="Help & Support" onPress={() => console.log('Navigate to help center')} />
           </View>
@@ -166,7 +166,7 @@ export default function OwnerProfileScreen() {
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <LogOut size={20} color="#ef4444" />
+          <LogOut size={20} color="#EF4444" />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
 
@@ -185,7 +185,7 @@ const MenuItem = ({ icon: Icon, title, subtitle, onPress, rightContent, color = 
         {subtitle && <Text style={styles.menuItemSubtitle}>{subtitle}</Text>}
       </View>
     </View>
-    {rightContent || <ChevronRight size={16} color="#94a3b8" />}
+    {rightContent || <ChevronRight size={16} color="#CBD5E1" />}
   </TouchableOpacity>
 );
 
@@ -200,33 +200,33 @@ const StatCard = ({ icon: Icon, title, value, color }: any) => (
 );
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
-  header: { paddingHorizontal: 20, paddingVertical: 24 },
-  profileHeader: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  container: { flex: 1, backgroundColor: '#FAFBFC' },
+  header: { paddingHorizontal: 24, paddingVertical: 28 },
+  profileHeader: { flexDirection: 'row', alignItems: 'center', gap: 20 },
+  avatar: { width: 68, height: 68, borderRadius: 34, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarImage: { width: '100%', height: '100%' },
   profileInfo: { flex: 1 },
-  profileName: { fontSize: 22, fontWeight: 'bold', color: '#ffffff', marginBottom: 4 },
-  profileEmail: { fontSize: 14, color: '#fed7aa' },
-  editButton: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8, padding: 10 },
+  profileName: { fontSize: 24, fontWeight: '700', color: '#ffffff', marginBottom: 6 },
+  profileEmail: { fontSize: 14, color: 'rgba(255,255,255,0.9)' },
+  editButton: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12, padding: 12 },
   content: { flex: 1 },
-  statsContainer: { padding: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#1e293b', marginBottom: 16 },
-  statsGrid: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  statCard: { flex: 1, borderRadius: 12, overflow: 'hidden' },
-  statCardGradient: { alignItems: 'center', padding: 16 },
-  statValue: { fontSize: 20, fontWeight: 'bold', color: '#1e293b', marginTop: 8, marginBottom: 4 },
-  statTitle: { fontSize: 12, color: '#64748b', fontWeight: '500', textAlign: 'center' },
-  section: { paddingHorizontal: 20, marginBottom: 24 },
-  menuContainer: { backgroundColor: '#ffffff', borderRadius: 12, overflow: 'hidden' },
-  menuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  menuItemLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
+  statsContainer: { padding: 24 },
+  sectionTitle: { fontSize: 20, fontWeight: '700', color: '#1E293B', marginBottom: 20 },
+  statsGrid: { flexDirection: 'row', gap: 16, marginBottom: 16 },
+  statCard: { flex: 1, borderRadius: 16, overflow: 'hidden' },
+  statCardGradient: { alignItems: 'center', padding: 20 },
+  statValue: { fontSize: 22, fontWeight: '700', color: '#1E293B', marginTop: 10, marginBottom: 6 },
+  statTitle: { fontSize: 12, color: '#64748B', fontWeight: '500', textAlign: 'center' },
+  section: { paddingHorizontal: 24, marginBottom: 28 },
+  menuContainer: { backgroundColor: '#ffffff', borderRadius: 16, overflow: 'hidden', shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+  menuItemLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 16 },
   menuItemText: { flex: 1 },
-  menuItemTitle: { fontSize: 16, fontWeight: '500', color: '#1e293b', marginBottom: 2 },
-  menuItemSubtitle: { fontSize: 14, color: '#64748b' },
-  appInfo: { alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12 },
-  appVersion: { fontSize: 12, color: '#94a3b8' },
-  logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', marginHorizontal: 20, paddingVertical: 16, borderRadius: 12, gap: 8, borderWidth: 1, borderColor: '#fecaca' },
-  logoutText: { fontSize: 16, fontWeight: '600', color: '#ef4444' },
-  bottomSpacing: { height: 20 },
+  menuItemTitle: { fontSize: 16, fontWeight: '600', color: '#1E293B', marginBottom: 4 },
+  menuItemSubtitle: { fontSize: 14, color: '#64748B' },
+  appInfo: { alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16 },
+  appVersion: { fontSize: 12, color: '#94A3B8' },
+  logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', marginHorizontal: 24, paddingVertical: 18, borderRadius: 16, gap: 10, borderWidth: 1, borderColor: '#FECACA', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
+  logoutText: { fontSize: 16, fontWeight: '600', color: '#EF4444' },
+  bottomSpacing: { height: 32 },
 });

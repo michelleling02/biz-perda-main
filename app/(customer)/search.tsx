@@ -139,22 +139,22 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#58508D', '#FF6361']} style={styles.header}>
+      <LinearGradient colors={['#6366F1', '#8B5CF6']} style={styles.header}>
         <Text style={styles.headerTitle}>Search Food Places</Text>
         <View style={styles.searchContainer}>
           <View style={styles.searchInputContainer}>
-            <Search size={20} color="#64748b" />
+            <Search size={20} color="#94A3B8" />
             <TextInput
               style={styles.searchInput}
               placeholder="Search by name or description..."
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor="#CBD5E1"
               autoFocus={true}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <X size={20} color="#64748b" />
+                <X size={20} color="#94A3B8" />
               </TouchableOpacity>
             )}
           </View>
@@ -169,26 +169,26 @@ export default function SearchScreen() {
 
 // --- Styles are unchanged ---
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7F7F7' },
-  header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#ffffff', marginBottom: 20 },
-  searchContainer: { flexDirection: 'row', gap: 12 },
-  searchInputContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, paddingHorizontal: 16, gap: 12 },
-  searchInput: { flex: 1, fontSize: 16, color: '#2F4858', height: 50 },
+  container: { flex: 1, backgroundColor: '#FAFBFC' },
+  header: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 },
+  headerTitle: { fontSize: 26, fontWeight: '700', color: '#ffffff', marginBottom: 24 },
+  searchContainer: { flexDirection: 'row', gap: 16 },
+  searchInputContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, paddingHorizontal: 20, gap: 12, shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 },
+  searchInput: { flex: 1, fontSize: 16, color: '#1E293B', height: 54 },
   content: { flex: 1 },
-  shopsContainer: { padding: 20, gap: 16 },
-  shopCard: { backgroundColor: '#FFFFFF', borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3, flexDirection: 'row', overflow: 'hidden' },
-  shopImage: { width: 100, height: 100, backgroundColor: '#F7F7F7' },
-  shopInfo: { flex: 1, padding: 12, justifyContent: 'space-between' },
-  shopName: { fontSize: 16, fontWeight: '600', color: '#2F4858', marginBottom: 4 },
-  shopDescription: { fontSize: 14, color: '#9B9B9B', marginBottom: 8 },
+  shopsContainer: { padding: 24, gap: 20 },
+  shopCard: { backgroundColor: '#FFFFFF', borderRadius: 16, shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, flexDirection: 'row', overflow: 'hidden' },
+  shopImage: { width: 110, height: 110, backgroundColor: '#F8FAFC' },
+  shopInfo: { flex: 1, padding: 16, justifyContent: 'space-between' },
+  shopName: { fontSize: 17, fontWeight: '700', color: '#1E293B', marginBottom: 6 },
+  shopDescription: { fontSize: 14, color: '#64748B', marginBottom: 10, lineHeight: 20 },
   shopMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  ratingContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  rating: { fontSize: 14, fontWeight: '600', color: '#2F4858' },
-  reviews: { fontSize: 12, color: '#9B9B9B' },
-  distanceContainer: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1, marginLeft: 8 },
-  distance: { fontSize: 12, color: '#9B9B9B', flex: 1 },
-  emptyState: { alignItems: 'center', paddingVertical: 60 },
-  emptyStateTitle: { fontSize: 18, fontWeight: '600', color: '#2F4858', marginTop: 16, marginBottom: 8 },
-  emptyStateText: { fontSize: 14, color: '#9B9B9B', textAlign: 'center' },
+  ratingContainer: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  rating: { fontSize: 14, fontWeight: '600', color: '#1E293B' },
+  reviews: { fontSize: 12, color: '#94A3B8' },
+  distanceContainer: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, marginLeft: 12 },
+  distance: { fontSize: 12, color: '#94A3B8', flex: 1 },
+  emptyState: { alignItems: 'center', paddingVertical: 80 },
+  emptyStateTitle: { fontSize: 20, fontWeight: '700', color: '#1E293B', marginTop: 20, marginBottom: 12 },
+  emptyStateText: { fontSize: 14, color: '#64748B', textAlign: 'center' },
 });
