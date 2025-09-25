@@ -26,15 +26,23 @@ export default function OwnerTabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#ff6b35',
-        tabBarInactiveTintColor: '#64748b',
+        tabBarActiveTintColor: '#E53E3E',
+        tabBarInactiveTintColor: '#6B7280',
         tabBarStyle: {
           backgroundColor: '#ffffff',
           borderTopWidth: 1,
-          borderTopColor: '#e2e8f0',
+          borderTopColor: '#E5E7EB',
           paddingBottom: 5,
           paddingTop: 5,
           height: 60,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 8,
+        },
+        tabBarLabelStyle: {
+          fontWeight: '600',
         },
       }}
     >

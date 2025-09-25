@@ -8,19 +8,25 @@ export default function CustomerTabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#58508D',
-        tabBarInactiveTintColor: '#9B9B9B',
+        tabBarActiveTintColor: '#E53E3E',
+        tabBarInactiveTintColor: '#6B7280',
         tabBarStyle: {
           backgroundColor: '#ffffff',
           borderTopWidth: 1,
-          borderTopColor: '#F0F0F0',
+          borderTopColor: '#E5E7EB',
           // Use Platform to handle different OS padding/height
           paddingBottom: Platform.OS === 'android' ? 5 : 30,
           paddingTop: 5,
           height: Platform.OS === 'android' ? 60 : 90,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 8,
         },
         tabBarLabelStyle: {
           fontSize: 12,
+          fontWeight: '600',
         },
       }}
     >

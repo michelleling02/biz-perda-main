@@ -207,14 +207,14 @@ export default function AdminDashboard() {
   // --- Main Component Return ---
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#1e40af', '#1e3a8a']} style={[styles.header, isTablet && styles.headerTablet]}>
+      <LinearGradient colors={['#E53E3E', '#3B82F6']} style={[styles.header, isTablet && styles.headerTablet]}>
         <View style={styles.headerContent}><Shield size={isTablet ? 32 : 28} color="#ffffff" /><View style={styles.headerText}><Text style={[styles.headerTitle, isTablet && styles.headerTitleTablet]}>Admin Dashboard</Text><Text style={[styles.headerSubtitle, isTablet && styles.headerSubtitleTablet]}>Biz@Perda Management Portal</Text></View></View>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}><LogOut size={20} color="#ffffff" /></TouchableOpacity>
       </LinearGradient>
       <View style={[styles.tabBar, isTablet && styles.tabBarTablet]}>
         {[{ id: 'dashboard', title: 'Dashboard', icon: BarChart3 }, { id: 'restaurants', title: 'Restaurants', icon: Store }, { id: 'users', title: 'Users', icon: Users }].map(tab => {
           const TabIcon = tab.icon;
-          return (<TouchableOpacity key={tab.id} style={[styles.tabButton, selectedTab === tab.id && styles.tabButtonActive, isTablet && styles.tabButtonTablet]} onPress={() => setSelectedTab(tab.id)}><TabIcon size={isTablet ? 24 : 20} color={selectedTab === tab.id ? '#1e40af' : '#64748b'} /><Text style={[styles.tabButtonText, selectedTab === tab.id && styles.tabButtonTextActive, isTablet && styles.tabButtonTextTablet]}>{tab.title}</Text></TouchableOpacity>);
+          return (<TouchableOpacity key={tab.id} style={[styles.tabButton, selectedTab === tab.id && styles.tabButtonActive, isTablet && styles.tabButtonTablet]} onPress={() => setSelectedTab(tab.id)}><TabIcon size={isTablet ? 24 : 20} color={selectedTab === tab.id ? '#E53E3E' : '#6B7280'} /><Text style={[styles.tabButtonText, selectedTab === tab.id && styles.tabButtonTextActive, isTablet && styles.tabButtonTextTablet]}>{tab.title}</Text></TouchableOpacity>);
         })}
       </View>
       {selectedTab === 'dashboard' && renderDashboard()}
@@ -236,7 +236,7 @@ export default function AdminDashboard() {
                 {selectedShop.status === 'Pending' && (
                   <View style={styles.modalActions}>
                     <TouchableOpacity style={styles.approveButton} onPress={() => approveShop(selectedShop.shop_id)}><LinearGradient colors={['#32d74b', '#30d158']} style={styles.actionButtonGradient}><CheckCircle size={20} color="#ffffff" /><Text style={styles.actionButtonText}>Approve</Text></LinearGradient></TouchableOpacity>
-                    <TouchableOpacity style={styles.rejectButton} onPress={() => rejectShop(selectedShop.shop_id)}><LinearGradient colors={['#ff3b30', '#d70015']} style={styles.actionButtonGradient}><XCircle size={20} color="#ffffff" /><Text style={styles.actionButtonText}>Reject</Text></LinearGradient></TouchableOpacity>
+                    <TouchableOpacity style={styles.rejectButton} onPress={() => rejectShop(selectedShop.shop_id)}><LinearGradient colors={['#E53E3E', '#DC2626']} style={styles.actionButtonGradient}><XCircle size={20} color="#ffffff" /><Text style={styles.actionButtonText}>Reject</Text></LinearGradient></TouchableOpacity>
                   </View>
                 )}
               </View>
@@ -251,72 +251,72 @@ export default function AdminDashboard() {
 // --- Styles ---
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
-    header: { paddingHorizontal: 20, paddingVertical: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    headerTablet: { paddingHorizontal: 40, paddingVertical: 30 },
+    header: { paddingHorizontal: 20, paddingVertical: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    headerTablet: { paddingHorizontal: 40, paddingVertical: 32 },
     headerContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     headerText: { flex: 1 },
-    headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#ffffff' },
-    headerTitleTablet: { fontSize: 28 },
-    headerSubtitle: { fontSize: 14, color: '#dbeafe', marginTop: 4 },
+    headerTitle: { fontSize: 26, fontWeight: 'bold', color: '#ffffff' },
+    headerTitleTablet: { fontSize: 30 },
+    headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.9)', marginTop: 4 },
     headerSubtitleTablet: { fontSize: 16 },
-    logoutButton: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8, padding: 10 },
-    tabBar: { flexDirection: 'row', backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+    logoutButton: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12, padding: 12 },
+    tabBar: { flexDirection: 'row', backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
     tabBarTablet: { paddingHorizontal: 20 },
-    tabButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, gap: 8 },
-    tabButtonTablet: { paddingVertical: 20 },
-    tabButtonActive: { backgroundColor: '#dbeafe', borderBottomWidth: 3, borderBottomColor: '#1e40af' },
-    tabButtonText: { fontSize: 14, color: '#64748b', fontWeight: '500' },
+    tabButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, gap: 8 },
+    tabButtonTablet: { paddingVertical: 22 },
+    tabButtonActive: { backgroundColor: '#FEF2F2', borderBottomWidth: 3, borderBottomColor: '#E53E3E' },
+    tabButtonText: { fontSize: 14, color: '#6B7280', fontWeight: '600' },
     tabButtonTextTablet: { fontSize: 16 },
-    tabButtonTextActive: { color: '#1e40af', fontWeight: '600' },
+    tabButtonTextActive: { color: '#E53E3E', fontWeight: '700' },
     content: { flex: 1 },
-    statsContainer: { padding: 20 },
-    sectionTitle: { fontSize: 20, fontWeight: '600', color: '#1e293b', marginBottom: 16 },
+    statsContainer: { padding: 24 },
+    sectionTitle: { fontSize: 21, fontWeight: '700', color: '#1F2937', marginBottom: 18 },
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-    viewAllButton: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#dbeafe', borderRadius: 8 },
-    viewAllText: { fontSize: 14, color: '#1e40af', fontWeight: '500' },
+    viewAllButton: { paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#FEF2F2', borderRadius: 12 },
+    viewAllButtonText: { fontSize: 14, color: '#E53E3E', fontWeight: '600' },
     statsGrid: { flexDirection: 'row', gap: 12, marginBottom: 12 },
     statsGridTablet: { flexWrap: 'wrap' },
-    statCard: { flex: 1, borderRadius: 12, overflow: 'hidden' },
+    statCard: { flex: 1, borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
     statCardTablet: { flexGrow: 0, flexShrink: 0, flexBasis: isTablet ? '48%' : '100%', marginBottom: 12 },
-    statCardGradient: { alignItems: 'center', padding: 16 },
-    statValue: { fontSize: 24, fontWeight: 'bold', color: '#1e293b', marginTop: 8, marginBottom: 4 },
+    statCardGradient: { alignItems: 'center', padding: 20 },
+    statValue: { fontSize: 26, fontWeight: 'bold', color: '#1F2937', marginTop: 10, marginBottom: 6 },
     statValueTablet: { fontSize: 28 },
-    statTitle: { fontSize: 12, color: '#64748b', fontWeight: '500', textAlign: 'center' },
+    statTitle: { fontSize: 13, color: '#6B7280', fontWeight: '600', textAlign: 'center' },
     statTitleTablet: { fontSize: 14 },
-    statSubtitle: { fontSize: 10, color: '#94a3b8', marginTop: 2, textAlign: 'center' },
-    shopsSection: { paddingHorizontal: 20, marginBottom: 24 },
+    statSubtitle: { fontSize: 11, color: '#9CA3AF', marginTop: 2, textAlign: 'center' },
+    shopsSection: { paddingHorizontal: 24, marginBottom: 28 },
     shopsGrid: { gap: 16 },
     shopsGridTablet: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-    shopCard: { backgroundColor: '#ffffff', borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3, overflow: 'hidden', position: 'relative' },
+    shopCard: { backgroundColor: '#ffffff', borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 8, overflow: 'hidden', position: 'relative' },
     shopCardTablet: { width: '48%', marginBottom: 16 },
-    shopImage: { width: '100%', height: 120, backgroundColor: '#f1f5f9' },
+    shopImage: { width: '100%', height: 140, backgroundColor: '#F3F4F6' },
     statusBadge: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, gap: 4 },
     statusText: { color: '#ffffff', fontSize: 10, fontWeight: '600' },
-    shopInfo: { padding: 16 },
-    shopName: { fontSize: 16, fontWeight: '600', color: '#1e293b', marginBottom: 4 },
-    shopOwner: { fontSize: 14, color: '#64748b', marginBottom: 12 },
+    shopInfo: { padding: 20 },
+    shopName: { fontSize: 18, fontWeight: '700', color: '#1F2937', marginBottom: 6 },
+    shopOwner: { fontSize: 14, color: '#6B7280', marginBottom: 14 },
     shopMeta: { gap: 8 },
     shopMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    shopMetaText: { fontSize: 12, color: '#64748b' },
-    viewDetailsButton: { backgroundColor: '#dbeafe', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, marginTop: 12, alignItems: 'center' },
-    viewDetailsText: { fontSize: 12, color: '#1e40af', fontWeight: '600' },
+    shopMetaText: { fontSize: 12, color: '#6B7280' },
+    viewDetailsButton: { backgroundColor: '#FEF2F2', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, marginTop: 14, alignItems: 'center' },
+    viewDetailsText: { fontSize: 13, color: '#E53E3E', fontWeight: '700' },
     modalContainer: { flex: 1, backgroundColor: '#ffffff' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
-    modalTitle: { fontSize: 18, fontWeight: '600', color: '#1e293b' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+    modalTitle: { fontSize: 19, fontWeight: '700', color: '#1F2937' },
     closeButton: { padding: 8 },
     modalContent: { flex: 1 },
-    modalImage: { width: '100%', height: 200, backgroundColor: '#f1f5f9' },
-    modalInfo: { padding: 20 },
-    modalShopName: { fontSize: 24, fontWeight: 'bold', color: '#1e293b', marginBottom: 8 },
-    modalCategory: { fontSize: 16, color: '#1e40af', fontWeight: '600', marginBottom: 8 },
-    modalOwner: { fontSize: 16, color: '#64748b', marginBottom: 20 },
+    modalImage: { width: '100%', height: 220, backgroundColor: '#F3F4F6' },
+    modalInfo: { padding: 24 },
+    modalShopName: { fontSize: 26, fontWeight: 'bold', color: '#1F2937', marginBottom: 10 },
+    modalCategory: { fontSize: 16, color: '#E53E3E', fontWeight: '600', marginBottom: 10 },
+    modalOwner: { fontSize: 16, color: '#6B7280', marginBottom: 24 },
     modalDetails: { gap: 12, marginBottom: 30 },
     modalDetailRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    modalDetailText: { fontSize: 16, color: '#374151', flex: 1 },
+    modalDetailText: { fontSize: 16, color: '#4B5563', flex: 1 },
     modalActions: { flexDirection: 'row', gap: 12 },
-    approveButton: { flex: 1, borderRadius: 12, overflow: 'hidden' },
-    rejectButton: { flex: 1, borderRadius: 12, overflow: 'hidden' },
-    actionButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, gap: 8 },
-    actionButtonText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
-    emptyText: { textAlign: 'center', color: '#64748b', marginTop: 20, fontStyle: 'italic' },
+    approveButton: { flex: 1, borderRadius: 16, overflow: 'hidden' },
+    rejectButton: { flex: 1, borderRadius: 16, overflow: 'hidden' },
+    actionButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, gap: 10 },
+    actionButtonText: { color: '#ffffff', fontSize: 16, fontWeight: '700' },
+    emptyText: { textAlign: 'center', color: '#6B7280', marginTop: 20, fontStyle: 'italic' },
 });

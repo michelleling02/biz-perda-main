@@ -1,4 +1,3 @@
-// app/signup.tsx (Final Version with Phone Number)
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, Alert, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -112,7 +111,7 @@ export default function SignUpScreen() {
       <StatusBar barStyle="light-content" />
       
       <LinearGradient
-        colors={['#58508D', '#FF6361']}
+        colors={['#E53E3E', '#3B82F6']}
         style={styles.headerGradient}
       >
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -121,7 +120,7 @@ export default function SignUpScreen() {
         <View style={styles.header}>
           <UserPlus size={40} color="#ffffff" />
           <Text style={styles.headerTitle}>Create Account</Text>
-          <Text style={styles.headerSubtitle}>Join the Biz@Perda community</Text>
+          <Text style={styles.headerSubtitle}>Join the Biz@Perda Community</Text>
         </View>
       </LinearGradient>
 
@@ -138,11 +137,11 @@ export default function SignUpScreen() {
                 <Text style={styles.inputLabel}>I am a...</Text>
                 <View style={styles.roleSelector}>
                   <TouchableOpacity style={[styles.roleButton, selectedRole === 'Customer' && styles.roleButtonSelected]} onPress={() => setSelectedRole('Customer')}>
-                    <User size={20} color={selectedRole === 'Customer' ? '#58508D' : '#64748b'} />
+                    <User size={20} color={selectedRole === 'Customer' ? '#E53E3E' : '#6B7280'} />
                     <Text style={[styles.roleButtonText, selectedRole === 'Customer' && styles.roleButtonTextSelected]}>Customer</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.roleButton, selectedRole === 'Owner' && styles.roleButtonSelected]} onPress={() => setSelectedRole('Owner')}>
-                    <Store size={20} color={selectedRole === 'Owner' ? '#58508D' : '#64748b'} />
+                    <Store size={20} color={selectedRole === 'Owner' ? '#E53E3E' : '#6B7280'} />
                     <Text style={[styles.roleButtonText, selectedRole === 'Owner' && styles.roleButtonTextSelected]}>Shop Owner</Text>
                   </TouchableOpacity>
                 </View>
@@ -152,7 +151,7 @@ export default function SignUpScreen() {
               <View style={styles.inputContainer}><Text style={styles.inputLabel}>Phone Number</Text><View style={styles.phoneInputWrapper}><Phone size={20} color="#94a3b8" style={styles.phoneInputIcon} /><TextInput style={styles.phoneInput} value={phoneNumber} onChangeText={setPhoneNumber} placeholder="e.g., 0123456789" keyboardType="phone-pad" /></View></View>
               <View style={styles.inputContainer}><Text style={styles.inputLabel}>Password *</Text><TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="Create a strong password" secureTextEntry /></View>
               <TouchableOpacity style={[styles.actionButton, isLoading && styles.actionButtonDisabled]} onPress={onSignUpPress} disabled={isLoading}>
-                <LinearGradient colors={['#58508D', '#FF6361']} style={styles.actionButtonGradient}>
+                <LinearGradient colors={['#E53E3E', '#3B82F6']} style={styles.actionButtonGradient}>
                   {isLoading ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.actionButtonText}>Sign Up</Text>}
                 </LinearGradient>
               </TouchableOpacity>
@@ -164,33 +163,33 @@ export default function SignUpScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7F7F7' },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
   headerGradient: { paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 40 },
   backButton: { position: 'absolute', top: Platform.OS === 'ios' ? 60 : 40, left: 20, zIndex: 1, padding: 8 },
   header: { alignItems: 'center', paddingHorizontal: 20 },
-  headerTitle: { fontSize: 32, fontWeight: 'bold', color: '#ffffff', marginTop: 10 },
+  headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#ffffff', marginTop: 10 },
   headerSubtitle: { fontSize: 16, color: 'rgba(255,255,255,0.8)', marginTop: 5 },
   content: { flex: 1 },
-  formContainer: { padding: 20 },
-  inputContainer: { marginBottom: 20 },
-  inputLabel: { fontSize: 16, fontWeight: '500', color: '#2F4858', marginBottom: 12 },
-  input: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: '#1E293B' },
-  actionButton: { borderRadius: 12, overflow: 'hidden', marginTop: 10 },
-  actionButtonGradient: { paddingVertical: 16, alignItems: 'center' },
-  actionButtonText: { color: '#ffffff', fontSize: 18, fontWeight: 'bold' },
+  formContainer: { padding: 24 },
+  inputContainer: { marginBottom: 24 },
+  inputLabel: { fontSize: 16, fontWeight: '600', color: '#374151', marginBottom: 12 },
+  input: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 16, fontSize: 16, color: '#1F2937', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  actionButton: { borderRadius: 16, overflow: 'hidden', marginTop: 16, shadowColor: '#E53E3E', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
+  actionButtonGradient: { paddingVertical: 18, alignItems: 'center' },
+  actionButtonText: { color: '#ffffff', fontSize: 17, fontWeight: 'bold', letterSpacing: 0.5 },
   actionButtonDisabled: { opacity: 0.7 },
   roleSelector: { flexDirection: 'row', gap: 10 },
-  roleButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, gap: 8 },
-  roleButtonSelected: { backgroundColor: '#F3E8FF', borderColor: '#58508D' },
-  roleButtonText: { fontSize: 16, color: '#64748b', fontWeight: '600' },
-  roleButtonTextSelected: { color: '#58508D' },
-  phoneInputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 16 },
+  roleButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, gap: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  roleButtonSelected: { backgroundColor: '#FEF2F2', borderColor: '#E53E3E' },
+  roleButtonText: { fontSize: 16, color: '#6B7280', fontWeight: '600' },
+  roleButtonTextSelected: { color: '#E53E3E' },
+  phoneInputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, paddingHorizontal: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   phoneInputIcon: { marginRight: 10 },
-  phoneInput: { flex: 1, paddingVertical: 14, fontSize: 16, color: '#1E293B' },
-  avatarContainer: { alignItems: 'center', marginBottom: 30 },
+  phoneInput: { flex: 1, paddingVertical: 16, fontSize: 16, color: '#1F2937' },
+  avatarContainer: { alignItems: 'center', marginBottom: 32 },
   avatarTouchable: { position: 'relative' },
-  avatarImage: { width: 120, height: 120, borderRadius: 60, borderWidth: 3, borderColor: '#FFFFFF' },
-  avatarPlaceholder: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#FFFFFF' },
-  avatarEditBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#58508D', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 2, borderColor: '#FFFFFF' },
+  avatarImage: { width: 120, height: 120, borderRadius: 60, borderWidth: 4, borderColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
+  avatarPlaceholder: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', borderWidth: 4, borderColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
+  avatarEditBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#E53E3E', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 2, borderColor: '#FFFFFF' },
   avatarEditText: { color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' },
 });

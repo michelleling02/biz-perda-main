@@ -151,23 +151,23 @@ export default function CustomerHomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#4ECDC4', '#44A08D', '#F7931E', '#FF6B35']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
+      <LinearGradient colors={['#E53E3E', '#3B82F6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
         <View style={styles.headerContent}>
             <View style={styles.logoContainer}>
-                <View style={styles.logo}><Grid3x3 size={24} color="#2F4858" /></View>
+                <View style={styles.logo}><Grid3x3 size={24} color="#1F2937" /></View>
                 <View>
                     <Text style={styles.headerTitle}>Welcome, {userName}!</Text>
                     <Text style={styles.headerSubtitle}>Discover & save Penang shops</Text>
                 </View>
             </View>
             <View style={styles.headerActions}>
-                <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(customer)/favorites')}><Heart size={20} color="#2F4858" /></TouchableOpacity>
+                <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(customer)/favorites')}><Heart size={20} color="#1F2937" /></TouchableOpacity>
                 <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(customer)/profile')}>
                   <View style={styles.profileIcon}>
                     {profilePhotoUrl ? (
                       <Image source={{ uri: profilePhotoUrl }} style={styles.profileImage} />
                     ) : (
-                      <User size={20} color="#2F4858" />
+                      <User size={20} color="#1F2937" />
                     )}
                   </View>
                 </TouchableOpacity>
@@ -175,10 +175,10 @@ export default function CustomerHomeScreen() {
         </View>
       </LinearGradient>
       <ScrollView style={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />} showsVerticalScrollIndicator={false}>
-        <View style={styles.searchContainer}><Link href="/(customer)/search" asChild><TouchableOpacity style={styles.searchInputContainer}><Search size={20} color="#9B9B9B" /><Text style={styles.searchInputPlaceholder}>Search shops in Penang...</Text></TouchableOpacity></Link></View>
+        <View style={styles.searchContainer}><Link href="/(customer)/search" asChild><TouchableOpacity style={styles.searchInputContainer}><Search size={20} color="#6B7280" /><Text style={styles.searchInputPlaceholder}>Search shops in Penang...</Text></TouchableOpacity></Link></View>
         <View style={styles.filtersSection}><Text style={styles.filterTitle}>Categories</Text><ScrollView horizontal showsHorizontalScrollIndicator={false}><FilterButton id="all" name="All" isSelected={selectedCategoryId === 'all'} onSelect={() => handleSelectCategory('all')} icon={Grid3x3} />{categories.map(c => (<FilterButton key={`cat-${c.id}`} id={c.id} name={c.name} isSelected={selectedCategoryId === c.id} onSelect={() => handleSelectCategory(c.id)} icon={getIconForCategory(c.name)} />))}</ScrollView></View>
         <View style={styles.filtersSection}><Text style={styles.filterTitle}>Tags</Text><ScrollView horizontal showsHorizontalScrollIndicator={false}><FilterButton id="all" name="All" isSelected={selectedTagId === 'all'} onSelect={() => handleSelectTag('all')} icon={Tag} />{tags.map(t => (<FilterButton key={`tag-${t.id}`} id={t.id} name={t.name} isSelected={selectedTagId === t.id} onSelect={() => handleSelectTag(t.id)} />))}</ScrollView></View>
-        {isLoading && !refreshing ? <ActivityIndicator size="large" color="#58508D" style={{ marginTop: 40 }} /> : <View style={styles.shopsContainer}>{shops.length > 0 ? shops.map(shop => <ShopCard key={shop.shop_id} shop={shop} openDetails={openDetails} />) : <Text style={styles.emptyText}>No restaurants found for the selected filters.</Text>}</View>}
+        {isLoading && !refreshing ? <ActivityIndicator size="large" color="#E53E3E" style={{ marginTop: 40 }} /> : <View style={styles.shopsContainer}>{shops.length > 0 ? shops.map(shop => <ShopCard key={shop.shop_id} shop={shop} openDetails={openDetails} />) : <Text style={styles.emptyText}>No restaurants found for the selected filters.</Text>}</View>}
         <View style={styles.bottomSpacing} />
       </ScrollView>
     </SafeAreaView>
@@ -187,7 +187,7 @@ export default function CustomerHomeScreen() {
 
 // Helper components (FilterButton, ShopCard) and styles are unchanged.
 // ... (paste the same FilterButton, ShopCard, and styles from your previous file here)
-const FilterButton = ({ id, name, isSelected, onSelect, icon: Icon }: any) => (<TouchableOpacity style={[styles.filterButton, isSelected && styles.filterButtonSelected]} onPress={onSelect}>{Icon && <Icon size={20} color={isSelected ? '#FFFFFF' : '#58508D'} />}<Text style={[styles.filterButtonText, isSelected && styles.filterButtonTextSelected]}>{name}</Text></TouchableOpacity>);
+const FilterButton = ({ id, name, isSelected, onSelect, icon: Icon }: any) => (<TouchableOpacity style={[styles.filterButton, isSelected && styles.filterButtonSelected]} onPress={onSelect}>{Icon && <Icon size={20} color={isSelected ? '#FFFFFF' : '#E53E3E'} />}<Text style={[styles.filterButtonText, isSelected && styles.filterButtonTextSelected]}>{name}</Text></TouchableOpacity>);
 const ShopCard = ({ shop, openDetails }: any) => (
   <TouchableOpacity style={styles.shopCard} onPress={() => openDetails(shop)}>
     <View style={styles.shopImageContainer}>
@@ -199,7 +199,7 @@ const ShopCard = ({ shop, openDetails }: any) => (
       <Text style={styles.shopDescription} numberOfLines={2}>{shop.description}</Text>
       <View style={styles.shopMeta}>
         <View style={styles.ratingContainer}>
-          <MapPin size={14} color="#9B9B9B" />
+          <MapPin size={14} color="#6B7280" />
           <Text style={styles.distance}>{shop.address || 'Location not set'}</Text>
         </View>
       </View>
@@ -213,38 +213,38 @@ const ShopCard = ({ shop, openDetails }: any) => (
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F7F7F7' },
-    header: { paddingHorizontal: 20, paddingVertical: 20 },
+    header: { paddingHorizontal: 20, paddingVertical: 24 },
     headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     logoContainer: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    logo: { width: 40, height: 40, backgroundColor: '#FFFFFF', borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#2F4858' },
-    headerSubtitle: { fontSize: 14, color: '#2F4858', opacity: 0.8 },
+    logo: { width: 44, height: 44, backgroundColor: '#FFFFFF', borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
+    headerTitle: { fontSize: 19, fontWeight: 'bold', color: '#FFFFFF' },
+    headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
     headerActions: { flexDirection: 'row', gap: 8 },
-    headerButton: { width: 40, height: 40, backgroundColor: '#FFFFFF', borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    profileIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F7F7F7', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+    headerButton: { width: 44, height: 44, backgroundColor: '#FFFFFF', borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
+    profileIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
     profileImage: { width: '100%', height: '100%' },
     content: { flex: 1 },
-    searchContainer: { paddingHorizontal: 20, paddingTop: 20 },
-    searchInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, gap: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
-    searchInputPlaceholder: { flex: 1, fontSize: 16, color: '#9B9B9B' },
-    filtersSection: { paddingLeft: 20, marginVertical: 20 },
-    filterTitle: { fontSize: 16, fontWeight: '600', color: '#2F4858', marginBottom: 12 },
-    filterButton: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderRadius: 16, paddingVertical: 10, paddingHorizontal: 16, borderWidth: 1, borderColor: '#F0F0F0', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1, marginRight: 12 },
-    filterButtonSelected: { backgroundColor: '#FF6361', borderColor: '#FF6361', shadowColor: '#FF6361', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 8 },
-    filterButtonText: { fontSize: 14, color: '#2F4858', fontWeight: '500' },
+    searchContainer: { paddingHorizontal: 20, paddingTop: 24 },
+    searchInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, paddingHorizontal: 18, paddingVertical: 14, gap: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 6 },
+    searchInputPlaceholder: { flex: 1, fontSize: 16, color: '#6B7280' },
+    filtersSection: { paddingLeft: 20, marginVertical: 24 },
+    filterTitle: { fontSize: 17, fontWeight: '700', color: '#1F2937', marginBottom: 16 },
+    filterButton: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderRadius: 20, paddingVertical: 12, paddingHorizontal: 18, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 3, marginRight: 12 },
+    filterButtonSelected: { backgroundColor: '#E53E3E', borderColor: '#E53E3E', shadowColor: '#E53E3E', shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 10 },
+    filterButtonText: { fontSize: 14, color: '#374151', fontWeight: '600' },
     filterButtonTextSelected: { color: '#FFFFFF', fontWeight: '600' },
-    shopsContainer: { paddingHorizontal: 20, gap: 16 },
-    shopCard: { backgroundColor: '#FFFFFF', borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 6, overflow: 'hidden' },
+    shopsContainer: { paddingHorizontal: 20, gap: 20 },
+    shopCard: { backgroundColor: '#FFFFFF', borderRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 8, overflow: 'hidden' },
     shopImageContainer: { position: 'relative' },
-    shopImage: { width: '100%', height: 200, backgroundColor: '#F7F7F7' },
-    shopInfo: { padding: 20 },
-    shopName: { fontSize: 20, fontWeight: 'bold', color: '#2F4858', marginBottom: 8 },
-    shopDescription: { fontSize: 14, color: '#9B9B9B', lineHeight: 20, marginBottom: 12 },
+    shopImage: { width: '100%', height: 220, backgroundColor: '#F3F4F6' },
+    shopInfo: { padding: 24 },
+    shopName: { fontSize: 21, fontWeight: 'bold', color: '#1F2937', marginBottom: 10 },
+    shopDescription: { fontSize: 15, color: '#6B7280', lineHeight: 22, marginBottom: 16 },
     shopMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
     ratingContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    distance: { fontSize: 14, color: '#9B9B9B', fontWeight: '500' },
-    detailsButton: { backgroundColor: '#58508D', borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-    detailsButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+    distance: { fontSize: 14, color: '#6B7280', fontWeight: '500' },
+    detailsButton: { backgroundColor: '#E53E3E', borderRadius: 16, paddingVertical: 14, alignItems: 'center', shadowColor: '#E53E3E', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
+    detailsButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', letterSpacing: 0.5 },
     bottomSpacing: { height: 20 },
-    emptyText: { textAlign: 'center', color: '#64748b', marginTop: 40, fontSize: 16, fontStyle: 'italic' },
+    emptyText: { textAlign: 'center', color: '#6B7280', marginTop: 40, fontSize: 16, fontStyle: 'italic' },
 });

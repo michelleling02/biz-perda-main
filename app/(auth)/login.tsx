@@ -1,5 +1,3 @@
-// FILE: app/(auth)/login.tsx
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -12,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -101,14 +100,14 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="light-content" backgroundColor="#0891b2" />
+      <StatusBar barStyle="light-content" backgroundColor="#E53E3E" />
       
       <LinearGradient
-        colors={['#58508D', '#FF6361']}
+        colors={['#E53E3E', '#3B82F6']}
         style={styles.headerGradient}
       >
         <View style={styles.header}>
-          <ChefHat size={40} color="#ffffff" />
+          <Image source={require('../../assets/images/perdaventures-logo.png')} style={styles.logo} />
           <Text style={styles.headerTitle}>Biz@Perda</Text>
           <Text style={styles.headerSubtitle}>Pulau Pinang Food Directory</Text>
         </View>
@@ -116,7 +115,7 @@ export default function LoginScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.formContainer}>
-          <Text style={styles.sectionTitle}>Welcome Back!</Text>
+          <Text style={styles.sectionTitle}>Welcome Back</Text>
           
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Email</Text>
@@ -124,7 +123,7 @@ export default function LoginScreen() {
               style={styles.input}
               value={username}
               onChangeText={setUsername}
-              placeholder="Enter your email"
+              placeholder="Enter your email address"
               keyboardType="email-address"
               autoCapitalize="none"
               placeholderTextColor="#94a3b8"
@@ -149,7 +148,7 @@ export default function LoginScreen() {
             disabled={isLoading}
           >
             <LinearGradient
-              colors={['#58508D', '#FF6361']}
+              colors={['#E53E3E', '#3B82F6']}
               style={styles.loginButtonGradient}
             >
               <Text style={styles.loginButtonText}>
@@ -163,7 +162,7 @@ export default function LoginScreen() {
             <Text style={styles.credentialsText}>
               Email: abdulqayyum.anuar6@gmail.com
             </Text>
-             <Text style={styles.credentialsText}>
+            <Text style={styles.credentialsText}>
               Password: [the password you set]
             </Text>
           </View>
@@ -173,11 +172,10 @@ export default function LoginScreen() {
   );
 }
 
-// Styles are unchanged
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F7F7',
+    backgroundColor: '#F8FAFC',
   },
   headerGradient: {
     paddingTop: Platform.OS === 'ios' ? 50 : 30,
@@ -187,8 +185,13 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     paddingHorizontal: 20,
   },
+  logo: {
+    width: 80,
+    height: 80,
+    resizeMode: 'contain',
+  },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#ffffff',
     marginTop: 10,
@@ -202,69 +205,85 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   formContainer: {
-    padding: 20,
+    padding: 24,
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '600',
-    color: '#2F4858',
-    marginBottom: 30,
+    color: '#1E293B',
+    marginBottom: 32,
     textAlign: 'center',
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   inputLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#2F4858',
-    marginBottom: 8,
+    color: '#374151',
+    marginBottom: 10,
   },
   input: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#9B9B9B',
-    borderRadius: 12,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
     fontSize: 16,
-    color: '#2F4858',
+    color: '#1F2937',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   loginButton: {
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
-    marginTop: 10,
-    marginBottom: 30,
+    marginTop: 16,
+    marginBottom: 32,
+    shadowColor: '#E53E3E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   loginButtonGradient: {
-    paddingVertical: 16,
+    paddingVertical: 18,
     alignItems: 'center',
   },
   loginButtonText: {
     color: '#ffffff',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
   loginButtonDisabled: {
     opacity: 0.7,
   },
   credentialsInfo: {
     backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#9B9B9B',
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   credentialsTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#2F4858',
-    marginBottom: 8,
+    color: '#374151',
+    marginBottom: 12,
   },
   credentialsText: {
-    fontSize: 12,
-    color: '#9B9B9B',
-    marginBottom: 4,
-    lineHeight: 18,
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 6,
+    lineHeight: 20,
   },
 });

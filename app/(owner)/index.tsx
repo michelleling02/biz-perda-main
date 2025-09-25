@@ -167,7 +167,7 @@ export default function OwnerDashboard() {
               router.push({ pathname: '/(owner)/edit-shop', params: { shopId: shop.shop_id } });
             }}
           >
-            <Edit size={16} color="#f97316" />
+            <Edit size={16} color="#E53E3E" />
             <Text style={styles.editButtonText}>Edit Shop</Text>
           </TouchableOpacity>
         </View>
@@ -176,12 +176,12 @@ export default function OwnerDashboard() {
   };
 
   if (isLoading) {
-    return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color="#58508D" style={{ flex: 1 }} /></SafeAreaView>;
+    return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color="#E53E3E" style={{ flex: 1 }} /></SafeAreaView>;
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#58508D', '#FF6361']} style={styles.header}>
+      <LinearGradient colors={['#E53E3E', '#3B82F6']} style={styles.header}>
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeText}>Welcome back,</Text>
           <Text style={styles.ownerName}>{ownerProfile?.name || 'Owner'}</Text>
@@ -194,11 +194,11 @@ export default function OwnerDashboard() {
           <Text style={styles.sectionTitle}>Performance Overview</Text>
           <View style={styles.statsGrid}>
             <StatCard icon={ChefHat} title="Restaurants" value={overviewStats?.total_shops ?? 0} color="#FF6361" subtitle="Total listings" />
-            <StatCard icon={Eye} title="Total Views" value={(overviewStats?.total_views ?? 0).toLocaleString()} color="#58508D" subtitle="All time" />
+            <StatCard icon={Eye} title="Total Views" value={(overviewStats?.total_views ?? 0).toLocaleString()} color="#3B82F6" subtitle="All time" />
           </View>
           <View style={styles.statsGrid}>
-            <StatCard icon={Heart} title="Total Favorites" value={overviewStats?.total_favorites ?? 0} color="#FF6361" subtitle="Total saves" />
-            <StatCard icon={Star} title="Avg. Rating" value={(overviewStats?.overall_avg_rating ?? 0).toFixed(1)} color="#58508D" subtitle="Across all shops" />
+            <StatCard icon={Heart} title="Total Favorites" value={overviewStats?.total_favorites ?? 0} color="#E53E3E" subtitle="Total saves" />
+            <StatCard icon={Star} title="Avg. Rating" value={(overviewStats?.overall_avg_rating ?? 0).toFixed(1)} color="#3B82F6" subtitle="Across all shops" />
           </View>
         </View>
 
@@ -206,10 +206,10 @@ export default function OwnerDashboard() {
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(owner)/add-shop')}>
-              <LinearGradient colors={['#58508D', '#FF6361']} style={styles.actionCardGradient}><ChefHat size={24} color="#ffffff" /><Text style={styles.actionText}>Add New Restaurant</Text></LinearGradient>
+              <LinearGradient colors={['#E53E3E', '#3B82F6']} style={styles.actionCardGradient}><ChefHat size={24} color="#ffffff" /><Text style={styles.actionText}>Add New Restaurant</Text></LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(owner)/analytics')}>
-              <LinearGradient colors={['#FF6361', '#58508D']} style={styles.actionCardGradient}><TrendingUp size={24} color="#ffffff" /><Text style={styles.actionText}>View Analytics</Text></LinearGradient>
+              <LinearGradient colors={['#3B82F6', '#E53E3E']} style={styles.actionCardGradient}><TrendingUp size={24} color="#ffffff" /><Text style={styles.actionText}>View Analytics</Text></LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
@@ -229,36 +229,36 @@ export default function OwnerDashboard() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7F7F7' },
-  header: { paddingHorizontal: 20, paddingVertical: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  header: { paddingHorizontal: 20, paddingVertical: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   welcomeSection: { flex: 1 },
-  welcomeText: { fontSize: 16, color: 'rgba(255,255,255,0.8)' },
-  ownerName: { fontSize: 24, fontWeight: 'bold', color: '#ffffff', marginVertical: 4 },
-  analyticsButton: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8, padding: 10 },
+  welcomeText: { fontSize: 16, color: 'rgba(255,255,255,0.9)' },
+  ownerName: { fontSize: 26, fontWeight: 'bold', color: '#ffffff', marginVertical: 6 },
+  analyticsButton: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12, padding: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
   content: { flex: 1 },
-  statsContainer: { padding: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#2F4858', marginBottom: 16 },
+  statsContainer: { padding: 24 },
+  sectionTitle: { fontSize: 19, fontWeight: '700', color: '#1F2937', marginBottom: 18 },
   statsGrid: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  statCard: { flex: 1, borderRadius: 12, overflow: 'hidden' },
-  statCardGradient: { padding: 16, alignItems: 'center' },
-  statValue: { fontSize: 20, fontWeight: 'bold', color: '#2F4858', marginTop: 8, marginBottom: 4 },
-  statTitle: { fontSize: 12, color: '#9B9B9B', fontWeight: '500' },
-  statSubtitle: { fontSize: 10, color: '#9B9B9B', marginTop: 2 },
-  quickActions: { paddingHorizontal: 20, marginBottom: 24 },
+  statCard: { flex: 1, borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
+  statCardGradient: { padding: 20, alignItems: 'center' },
+  statValue: { fontSize: 22, fontWeight: 'bold', color: '#1F2937', marginTop: 10, marginBottom: 6 },
+  statTitle: { fontSize: 13, color: '#6B7280', fontWeight: '600' },
+  statSubtitle: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
+  quickActions: { paddingHorizontal: 24, marginBottom: 28 },
   actionsGrid: { flexDirection: 'row', gap: 12 },
-  actionCard: { flex: 1, borderRadius: 12, overflow: 'hidden' },
-  actionCardGradient: { padding: 20, alignItems: 'center', gap: 8 },
-  actionText: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
-  shopsSection: { paddingHorizontal: 20, marginBottom: 24 },
-  shopCard: { backgroundColor: '#FFFFFF', borderRadius: 12, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3, overflow: 'hidden', position: 'relative' },
-  shopImage: { width: '100%', height: 120, backgroundColor: '#F7F7F7' },
+  actionCard: { flex: 1, borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
+  actionCardGradient: { padding: 24, alignItems: 'center', gap: 10 },
+  actionText: { color: '#ffffff', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 },
+  shopsSection: { paddingHorizontal: 24, marginBottom: 28 },
+  shopCard: { backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 8, overflow: 'hidden', position: 'relative' },
+  shopImage: { width: '100%', height: 140, backgroundColor: '#F3F4F6' },
   statusBadge: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, gap: 4 },
   statusText: { color: '#ffffff', fontSize: 10, fontWeight: '600' },
-  shopInfo: { padding: 16 },
-  shopName: { fontSize: 16, fontWeight: '600', color: '#2F4858', marginBottom: 12 },
+  shopInfo: { padding: 20 },
+  shopName: { fontSize: 18, fontWeight: '700', color: '#1F2937', marginBottom: 14 },
   shopStats: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12 },
   shopStat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  shopStatValue: { fontSize: 12, color: '#9B9B9B', fontWeight: '500' },
-  editButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF7ED', paddingVertical: 8, borderRadius: 8, gap: 6, borderWidth: 1, borderColor: '#f97316', marginTop: 8 },
-  editButtonText: { color: '#f97316', fontSize: 14, fontWeight: '600' },
-  emptyText: { textAlign: 'center', color: '#64748b', marginTop: 20, fontStyle: 'italic', paddingHorizontal: 20 },
+  shopStatValue: { fontSize: 13, color: '#6B7280', fontWeight: '600' },
+  editButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FEF2F2', paddingVertical: 10, borderRadius: 12, gap: 8, borderWidth: 1, borderColor: '#E53E3E', marginTop: 10 },
+  editButtonText: { color: '#E53E3E', fontSize: 15, fontWeight: '700' },
+  emptyText: { textAlign: 'center', color: '#6B7280', marginTop: 20, fontStyle: 'italic', paddingHorizontal: 20 },
 });
