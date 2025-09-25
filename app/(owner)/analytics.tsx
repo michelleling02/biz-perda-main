@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BarChart as BarChartIcon, Eye, Heart, Star, Filter, MessageSquare } from 'lucide-react-native';
+import { ChartBar as BarChartIcon, Eye, Heart, Star, Filter, MessageSquare } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
