@@ -153,7 +153,7 @@ export default function AnalyticsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#6366F1', '#8B5CF6']} style={styles.header}>
+      <LinearGradient colors={['#3b82f6', '#2563eb']} style={styles.header}>
         <Text style={styles.headerTitle}>Analytics</Text>
         <Text style={styles.headerSubtitle}>Track your business performance</Text>
         <View style={styles.periodSelector}>
@@ -164,17 +164,17 @@ export default function AnalyticsScreen() {
           ))}
         </View>
       </LinearGradient>
-      {isLoading ? <ActivityIndicator size="large" color="#4F46E5" style={{ flex: 1 }} /> : (
+      {isLoading ? <ActivityIndicator size="large" color="#3b82f6" style={{ flex: 1 }} /> : (
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.overviewContainer}>
             <Text style={styles.sectionTitle}>Overview ({selectedPeriod})</Text>
             <View style={styles.statsGrid}>
-              <StatCard icon={Eye} title="Total Views" value={(overview?.total_views ?? 0).toLocaleString()} color="#4F46E5" />
-              <StatCard icon={Heart} title="Total Favorites" value={(overview?.total_favorites ?? 0).toLocaleString()} color="#EC4899" />
+              <StatCard icon={Eye} title="Total Views" value={(overview?.total_views ?? 0).toLocaleString()} color="#0891b2" />
+              <StatCard icon={Heart} title="Total Favorites" value={(overview?.total_favorites ?? 0).toLocaleString()} color="#ef4444" />
             </View>
             <View style={styles.statsGrid}>
-              <StatCard icon={Star} title="Avg Rating" value={Number(overview?.avg_rating ?? 0).toFixed(1)} color="#F59E0B" />
-              <StatCard icon={MessageSquare} title="Total Reviews" value={(overview?.total_reviews ?? 0).toLocaleString()} color="#10B981" />
+              <StatCard icon={Star} title="Avg Rating" value={Number(overview?.avg_rating ?? 0).toFixed(1)} color="#fbbf24" />
+              <StatCard icon={MessageSquare} title="Total Reviews" value={(overview?.total_reviews ?? 0).toLocaleString()} color="#10b981" />
             </View>
           </View>
           <View style={styles.chartSection}><StackedBarChart data={engagementStats} /></View>
@@ -185,7 +185,7 @@ export default function AnalyticsScreen() {
           <View style={styles.insightsSection}>
             <Text style={styles.sectionTitle}>Insights & Tips</Text>
             <View style={styles.insightCard}><LinearGradient colors={['#10b981', '#059669']} style={styles.insightGradient}><Text style={styles.insightTitle}>📈 Stay Consistent</Text><Text style={styles.insightText}>Keep your shop information and photos updated to attract more customers and improve your visibility.</Text></LinearGradient></View>
-            <View style={styles.insightCard}><LinearGradient colors={['#6366F1', '#8B5CF6']} style={styles.insightGradient}><Text style={styles.insightTitle}>💡 Engage Your Customers</Text><Text style={styles.insightText}>Responding to reviews and running promotions on busy days can significantly boost customer loyalty.</Text></LinearGradient></View>
+            <View style={styles.insightCard}><LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.insightGradient}><Text style={styles.insightTitle}>💡 Engage Your Customers</Text><Text style={styles.insightText}>Responding to reviews and running promotions on busy days can significantly boost customer loyalty.</Text></LinearGradient></View>
           </View>
           <View style={styles.bottomSpacing} />
         </ScrollView>
@@ -195,57 +195,57 @@ export default function AnalyticsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFBFC' },
-  header: { paddingHorizontal: 24, paddingVertical: 28 },
-  headerTitle: { fontSize: 26, fontWeight: '700', color: '#ffffff' },
-  headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.9)', marginTop: 6, marginBottom: 24 },
-  periodSelector: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 16, padding: 6 },
-  periodButton: { flex: 1, paddingVertical: 10, paddingHorizontal: 18, borderRadius: 12, alignItems: 'center' },
+  container: { flex: 1, backgroundColor: '#f8fafc' },
+  header: { paddingHorizontal: 20, paddingVertical: 24 },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#ffffff' },
+  headerSubtitle: { fontSize: 14, color: '#dbeafe', marginTop: 4, marginBottom: 20 },
+  periodSelector: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12, padding: 4 },
+  periodButton: { flex: 1, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, alignItems: 'center' },
   periodButtonActive: { backgroundColor: '#ffffff' },
-  periodButtonText: { fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.9)' },
-  periodButtonTextActive: { color: '#4F46E5' },
+  periodButtonText: { fontSize: 14, fontWeight: '500', color: '#dbeafe' },
+  periodButtonTextActive: { color: '#3b82f6' },
   content: { flex: 1 },
-  overviewContainer: { padding: 24 },
-  sectionTitle: { fontSize: 20, fontWeight: '700', color: '#1E293B', marginBottom: 20 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  filterButton: { padding: 10 },
-  statsGrid: { flexDirection: 'row', gap: 16, marginBottom: 16 },
-  statCard: { flex: 1, borderRadius: 16, overflow: 'hidden' },
-  statCardGradient: { padding: 20 },
-  statCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  statValue: { fontSize: 26, fontWeight: '700', color: '#1E293B', marginBottom: 6 },
-  statTitle: { fontSize: 12, color: '#64748B', fontWeight: '500' },
-  chartSection: { paddingHorizontal: 24, marginBottom: 28 },
-  chartContainer: { backgroundColor: '#ffffff', borderRadius: 20, padding: 24, shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 },
-  chartTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B', marginBottom: 20 },
-  chart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', height: 140, marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  chartBar: { alignItems: 'center', flex: 1, paddingHorizontal: 6 },
+  overviewContainer: { padding: 20 },
+  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#1e293b', marginBottom: 16 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  filterButton: { padding: 8 },
+  statsGrid: { flexDirection: 'row', gap: 12, marginBottom: 12 },
+  statCard: { flex: 1, borderRadius: 12, overflow: 'hidden' },
+  statCardGradient: { padding: 16 },
+  statCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  statValue: { fontSize: 24, fontWeight: 'bold', color: '#1e293b', marginBottom: 4 },
+  statTitle: { fontSize: 12, color: '#64748b', fontWeight: '500' },
+  chartSection: { paddingHorizontal: 20, marginBottom: 24 },
+  chartContainer: { backgroundColor: '#ffffff', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3 },
+  chartTitle: { fontSize: 16, fontWeight: '600', color: '#1e293b', marginBottom: 16 },
+  chart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', height: 140, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  chartBar: { alignItems: 'center', flex: 1, paddingHorizontal: 4 },
   barContainer: {
     width: '100%',
     minWidth: 20,
-    borderRadius: 6,
+    borderRadius: 4,
     overflow: 'hidden',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#f1f5f9',
     flexDirection: 'column-reverse',
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  barLabel: { fontSize: 12, color: '#64748B', fontWeight: '500' },
-  emptyChartText: { textAlign: 'center', color: '#64748B', fontStyle: 'italic', height: 140, lineHeight: 140 },
-  chartLegend: { flexDirection: 'row', justifyContent: 'center', gap: 20, paddingTop: 12 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  legendColor: { width: 12, height: 12, borderRadius: 3 },
-  legendText: { fontSize: 12, color: '#64748B' },
-  shopsSection: { paddingHorizontal: 24, marginBottom: 28 },
-  shopCard: { backgroundColor: '#ffffff', borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
-  shopName: { fontSize: 17, fontWeight: '700', color: '#1E293B', marginBottom: 16 },
+  barLabel: { fontSize: 12, color: '#64748b', fontWeight: '500' },
+  emptyChartText: { textAlign: 'center', color: '#64748b', fontStyle: 'italic', height: 140, lineHeight: 140 },
+  chartLegend: { flexDirection: 'row', justifyContent: 'center', gap: 16, paddingTop: 8 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendColor: { width: 10, height: 10, borderRadius: 2 },
+  legendText: { fontSize: 12, color: '#64748b' },
+  shopsSection: { paddingHorizontal: 20, marginBottom: 24 },
+  shopCard: { backgroundColor: '#ffffff', borderRadius: 12, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 },
+  shopName: { fontSize: 16, fontWeight: '600', color: '#1e293b', marginBottom: 12 },
   shopStats: { flexDirection: 'row', justifyContent: 'space-around' },
-  shopStat: { alignItems: 'center', gap: 6 },
-  shopStatValue: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
-  shopStatLabel: { fontSize: 12, color: '#64748B' },
-  insightsSection: { paddingHorizontal: 24, marginBottom: 28 },
-  insightCard: { borderRadius: 16, overflow: 'hidden', marginBottom: 16 },
-  insightGradient: { padding: 20 },
-  insightTitle: { fontSize: 16, fontWeight: '700', color: '#ffffff', marginBottom: 10 },
-  insightText: { fontSize: 14, color: '#ffffff', lineHeight: 22, opacity: 0.95 },
-  bottomSpacing: { height: 32 },
+  shopStat: { alignItems: 'center', gap: 4 },
+  shopStatValue: { fontSize: 16, fontWeight: 'bold', color: '#1e293b' },
+  shopStatLabel: { fontSize: 12, color: '#64748b' },
+  insightsSection: { paddingHorizontal: 20, marginBottom: 24 },
+  insightCard: { borderRadius: 12, overflow: 'hidden', marginBottom: 12 },
+  insightGradient: { padding: 16 },
+  insightTitle: { fontSize: 16, fontWeight: '600', color: '#ffffff', marginBottom: 8 },
+  insightText: { fontSize: 14, color: '#ffffff', lineHeight: 20, opacity: 0.9 },
+  bottomSpacing: { height: 20 },
 });

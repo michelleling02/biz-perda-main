@@ -225,7 +225,7 @@ export default function AddShopScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#6366F1', '#8B5CF6']} style={styles.header}>
+      <LinearGradient colors={['#32d74b', '#30d158']} style={styles.header}>
         <Text style={styles.headerTitle}>Add New Restaurant</Text>
         <Text style={styles.headerSubtitle}>Share your delicious food with the community</Text>
       </LinearGradient>
@@ -270,7 +270,7 @@ export default function AddShopScreen() {
             </View>
 
             <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
-              <ImageIcon size={32} color="#94A3B8" />
+              <ImageIcon size={32} color="#64748b" />
               <Text style={styles.imagePickerText}>Tap to add images</Text>
             </TouchableOpacity>
           </View>
@@ -292,7 +292,7 @@ export default function AddShopScreen() {
             <Text style={styles.sectionSubtitle}>Search for the address and fine-tune the pin on the map.</Text>
             
             <TouchableOpacity style={styles.addressInputButton} onPress={() => setIsAddressModalVisible(true)}>
-              <Search size={18} color="#94A3B8" />
+              <Search size={18} color="#64748b" />
               <Text style={[styles.addressInputText, !formData.address && styles.addressInputPlaceholder]}>
                 {formData.address || 'Tap to search for an address'}
               </Text>
@@ -368,7 +368,7 @@ export default function AddShopScreen() {
           </View>
 
           <TouchableOpacity style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]} onPress={submitShop} disabled={isSubmitting}>
-            <LinearGradient colors={['#6366F1', '#8B5CF6']} style={styles.submitButtonGradient}>
+            <LinearGradient colors={['#32d74b', '#30d158']} style={styles.submitButtonGradient}>
               {isSubmitting ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
@@ -387,11 +387,11 @@ export default function AddShopScreen() {
         animationType="slide"
         onRequestClose={() => setIsAddressModalVisible(false)}
       >
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFBFC' }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Search Address</Text>
             <TouchableOpacity onPress={() => setIsAddressModalVisible(false)}>
-              <X size={24} color="#94A3B8" />
+              <X size={24} color="#64748b" />
             </TouchableOpacity>
           </View>
           <View style={{ flex: 1 }}>
@@ -413,30 +413,30 @@ export default function AddShopScreen() {
               placeHolder={"Search for an address or business name"}
               stylesContainer={{
                   flex: 1,
-                  padding: 20,
-                  backgroundColor: '#FAFBFC',
+                  padding: 16,
+                  backgroundColor: '#f8fafc',
               }}
               stylesInput={{
                   ...styles.input,
-                  marginBottom: 20,
+                  marginBottom: 16,
               }}
               stylesList={{
-                borderColor: '#F1F5F9',
+                borderColor: '#e2e8f0',
                 borderWidth: 1,
-                borderRadius: 16,
+                borderRadius: 12,
                 backgroundColor: '#ffffff',
               }}
               stylesItem={{
-                padding: 16,
+                padding: 12,
                 borderBottomWidth: 1,
-                borderBottomColor: '#F8FAFC',
+                borderBottomColor: '#f1f5f9',
               }}
               stylesItemText={{
-                color: '#1E293B',
+                color: '#334155',
                 fontSize: 15,
               }}
               stylesLoader={{
-                marginTop: 24,
+                marginTop: 20,
               }}
             />
           </View>
@@ -447,69 +447,64 @@ export default function AddShopScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FAFBFC' },
-    header: { paddingHorizontal: 24, paddingVertical: 28 },
-    headerTitle: { fontSize: 26, fontWeight: '700', color: '#ffffff' },
-    headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.9)', marginTop: 6 },
+    container: { flex: 1, backgroundColor: '#f8fafc' },
+    header: { paddingHorizontal: 20, paddingVertical: 24 },
+    headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#ffffff' },
+    headerSubtitle: { fontSize: 14, color: '#d1fae5', marginTop: 4 },
     formContainer: { flex: 1 },
     form: { flex: 1 },
-    section: { paddingHorizontal: 24, paddingVertical: 24, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    sectionTitle: { fontSize: 20, fontWeight: '700', color: '#1E293B', marginBottom: 6 },
-    sectionSubtitle: { fontSize: 14, color: '#64748B', marginBottom: 20 },
-    inputGroup: { marginBottom: 20 },
-    inputLabel: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 10 },
-    input: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 16, fontSize: 16, color: '#1E293B', shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
-    textArea: { height: 120, paddingTop: 16 },
-    imagePicker: { width: '100%', height: 140, borderWidth: 2, borderColor: '#CBD5E1', borderStyle: 'dashed', borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', gap: 10, marginTop: 20 },
-    imagePickerText: { fontSize: 16, color: '#64748B', fontWeight: '500' },
-    submitButton: { marginHorizontal: 24, marginTop: 24, borderRadius: 16, overflow: 'hidden' },
-    submitButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, gap: 10 },
+    section: { paddingHorizontal: 20, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+    sectionTitle: { fontSize: 18, fontWeight: '600', color: '#1e293b', marginBottom: 4 },
+    sectionSubtitle: { fontSize: 14, color: '#64748b', marginBottom: 16 },
+    inputGroup: { marginBottom: 16 },
+    inputLabel: { fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 8 },
+    input: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: '#1e293b' },
+    textArea: { height: 100, paddingTop: 14 },
+    imagePicker: { width: '100%', height: 120, borderWidth: 2, borderColor: '#cbd5e1', borderStyle: 'dashed', borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', gap: 8, marginTop: 16 },
+    imagePickerText: { fontSize: 16, color: '#64748b', fontWeight: '500' },
+    submitButton: { marginHorizontal: 20, marginTop: 20, borderRadius: 12, overflow: 'hidden' },
+    submitButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, gap: 8 },
     submitButtonText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
     submitButtonDisabled: { opacity: 0.7 },
-    bottomSpacing: { height: 48 },
-    imageListContainer: { marginBottom: 20, gap: 16 },
-    imagePreviewWrapper: { position: 'relative', width: '100%', height: 220, borderRadius: 16, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent' },
-    mainImageWrapper: { borderColor: '#4F46E5' },
+    bottomSpacing: { height: 40 },
+    imageListContainer: { marginBottom: 16, gap: 12 },
+    imagePreviewWrapper: { position: 'relative', width: '100%', height: 200, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent' },
+    mainImageWrapper: { borderColor: '#32d74b' },
     previewImage: { width: '100%', height: '100%' },
-    mainTag: { position: 'absolute', top: 12, left: 12, backgroundColor: '#4F46E5', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, zIndex: 1 },
+    mainTag: { position: 'absolute', top: 8, left: 8, backgroundColor: '#32d74b', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, zIndex: 1 },
     mainTagText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-    imageActions: { position: 'absolute', bottom: 12, right: 12, flexDirection: 'row', gap: 10 },
-    actionButton: { backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
+    imageActions: { position: 'absolute', bottom: 8, right: 8, flexDirection: 'row', gap: 8 },
+    actionButton: { backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
     actionButtonText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-    removeButton: { padding: 8, backgroundColor: 'rgba(239, 68, 68, 0.9)' },
-    itemsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+    removeButton: { padding: 6, backgroundColor: 'rgba(239, 68, 68, 0.8)' },
+    itemsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
     item: {
-        paddingHorizontal: 20,
-        paddingVertical: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
         backgroundColor: '#ffffff',
         borderWidth: 1,
-        borderColor: '#F1F5F9',
-        borderRadius: 24,
-        shadowColor: '#4F46E5',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 8,
-        elevation: 2,
+        borderColor: '#e2e8f0',
+        borderRadius: 20,
     },
     itemSelected: {
-        backgroundColor: '#EEF2FF',
-        borderColor: '#4F46E5',
+        backgroundColor: '#dcfce7',
+        borderColor: '#22c55e',
     },
     itemText: {
         fontSize: 14,
-        fontWeight: '600',
-        color: '#475569',
+        fontWeight: '500',
+        color: '#334155',
     },
     itemTextSelected: {
-        color: '#4F46E5',
+        color: '#166534',
     },
     mapContainer: {
-        height: 280,
-        borderRadius: 16,
+        height: 250,
+        borderRadius: 12,
         overflow: 'hidden',
-        marginBottom: 20,
+        marginBottom: 16,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: '#e2e8f0',
         zIndex: 0,
     },
     map: {
@@ -521,39 +516,34 @@ const styles = StyleSheet.create({
       alignItems: 'center',
       backgroundColor: '#ffffff',
       borderWidth: 1,
-      borderColor: '#F1F5F9',
-      borderRadius: 16,
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-      marginBottom: 20,
-      gap: 12,
+      borderColor: '#e2e8f0',
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      marginBottom: 16,
+      gap: 8,
       zIndex: 2,
-      shadowColor: '#4F46E5',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.04,
-      shadowRadius: 8,
-      elevation: 2,
     },
     addressInputText: {
       fontSize: 16,
-      color: '#1E293B',
+      color: '#1e293b',
       flex: 1,
     },
     addressInputPlaceholder: {
-      color: '#94A3B8',
+      color: '#94a3b8',
     },
     modalHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: 20,
+      padding: 16,
       borderBottomWidth: 1,
-      borderBottomColor: '#F1F5F9',
+      borderBottomColor: '#e2e8f0',
       backgroundColor: '#ffffff',
     },
     modalTitle: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: '#1E293B',
+      fontSize: 18,
+      fontWeight: '600',
+      color: '#1e293b',
     },
 });

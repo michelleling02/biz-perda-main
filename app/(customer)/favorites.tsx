@@ -138,7 +138,7 @@ export default function FavoritesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#6366F1', '#8B5CF6']} style={styles.header}>
+      <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.header}>
         <View style={styles.headerContent}>
           <Heart size={28} color="#ffffff" fill="#ffffff" />
           <View style={styles.headerText}>
@@ -148,18 +148,18 @@ export default function FavoritesScreen() {
         </View>
       </LinearGradient>
       {isLoading ? (
-        <ActivityIndicator size="large" color="#4F46E5" style={{ flex: 1 }} />
+        <ActivityIndicator size="large" color="#58508D" style={{ flex: 1 }} />
       ) : (
         <ScrollView style={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           {favoriteShops.length > 0 ? (
             <View style={styles.shopsGrid}>{favoriteShops.map(shop => <ShopCard key={shop.shop_id} shop={shop} />)}</View>
           ) : (
             <View style={styles.emptyState}>
-              <Heart size={72} color="#CBD5E1" />
+              <Heart size={64} color="#cbd5e1" />
               <Text style={styles.emptyStateTitle}>No Favorites Yet</Text>
               <Text style={styles.emptyStateText}>Start exploring and tap the heart icon to save your favorite spots.</Text>
               <TouchableOpacity style={styles.exploreButton} onPress={() => router.push('/(customer)')}>
-                <LinearGradient colors={['#6366F1', '#8B5CF6']} style={styles.exploreButtonGradient}>
+                <LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.exploreButtonGradient}>
                   <Text style={styles.exploreButtonText}>Explore Restaurants</Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -173,27 +173,27 @@ export default function FavoritesScreen() {
 
 // Styles are unchanged
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFBFC' },
-  header: { paddingHorizontal: 24, paddingVertical: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerContent: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  container: { flex: 1, backgroundColor: '#F7F7F7' },
+  header: { paddingHorizontal: 20, paddingVertical: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   headerText: { flex: 1 },
-  headerTitle: { fontSize: 26, fontWeight: '700', color: '#ffffff' },
-  headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.9)', marginTop: 6 },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#ffffff' },
+  headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
   content: { flex: 1 },
-  shopsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', padding: 20, gap: 16 },
-  shopCard: { width: '47%', backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 20, shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4, overflow: 'hidden' },
-  shopImage: { width: '100%', height: 140, backgroundColor: '#F8FAFC' },
-  removeButton: { position: 'absolute', top: 12, right: 12, backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 20, padding: 8, zIndex: 1 },
-  shopInfo: { padding: 16 },
-  shopName: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 10, height: 44 },
-  distanceContainer: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
-  distance: { fontSize: 12, color: '#64748B', flex: 1 },
-  detailsButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 12, gap: 6, backgroundColor: '#4F46E5' },
+  shopsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', padding: 16 },
+  shopCard: { width: '48%', backgroundColor: '#FFFFFF', borderRadius: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, overflow: 'hidden' },
+  shopImage: { width: '100%', height: 120, backgroundColor: '#F7F7F7' },
+  removeButton: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 16, padding: 6, zIndex: 1 },
+  shopInfo: { padding: 12 },
+  shopName: { fontSize: 16, fontWeight: 'bold', color: '#2F4858', marginBottom: 8, height: 40 },
+  distanceContainer: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 12 },
+  distance: { fontSize: 12, color: '#64748b', flex: 1 },
+  detailsButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: 8, gap: 6, backgroundColor: '#58508D' },
   actionButtonText: { color: '#ffffff', fontSize: 12, fontWeight: '600' },
-  emptyState: { alignItems: 'center', paddingVertical: 100, paddingHorizontal: 48, flex: 1, justifyContent: 'center' },
-  emptyStateTitle: { fontSize: 26, fontWeight: '700', color: '#1E293B', marginTop: 28, marginBottom: 16 },
-  emptyStateText: { fontSize: 16, color: '#64748B', textAlign: 'center', lineHeight: 26, marginBottom: 40 },
-  exploreButton: { borderRadius: 16, overflow: 'hidden' },
-  exploreButtonGradient: { paddingVertical: 18, paddingHorizontal: 36, alignItems: 'center' },
+  emptyState: { alignItems: 'center', paddingVertical: 80, paddingHorizontal: 40, flex: 1, justifyContent: 'center' },
+  emptyStateTitle: { fontSize: 24, fontWeight: 'bold', color: '#2F4858', marginTop: 24, marginBottom: 12 },
+  emptyStateText: { fontSize: 16, color: '#9B9B9B', textAlign: 'center', lineHeight: 24, marginBottom: 32 },
+  exploreButton: { borderRadius: 12, overflow: 'hidden' },
+  exploreButtonGradient: { paddingVertical: 16, paddingHorizontal: 32, alignItems: 'center' },
   exploreButtonText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
 });

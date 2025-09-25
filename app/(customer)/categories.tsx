@@ -13,13 +13,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 
 const CATEGORIES = [
-  { id: 'all', name: 'All', icon: Grid3X3, color: '#4F46E5', count: 156 },
-  { id: 'food', name: 'Food', icon: Utensils, color: '#4F46E5', count: 89 },
-  { id: 'cafe', name: 'Cafe', icon: Coffee, color: '#4F46E5', count: 28 },
-  { id: 'bakery', name: 'Bakery', icon: Cake, color: '#EC4899', count: 12 },
-  { id: 'desserts', name: 'Desserts', icon: Cake, color: '#4F46E5', count: 25 },
-  { id: 'street-food', name: 'Street Food', icon: Utensils, color: '#EC4899', count: 45 },
-  { id: 'local-cuisine', name: 'Local Cuisine', icon: Utensils, color: '#4F46E5', count: 38 },
+  { id: 'all', name: 'All', icon: Grid3X3, color: '#58508D', count: 156 },
+  { id: 'food', name: 'Food', icon: Utensils, color: '#58508D', count: 89 },
+  { id: 'cafe', name: 'Cafe', icon: Coffee, color: '#58508D', count: 28 },
+  { id: 'bakery', name: 'Bakery', icon: Cake, color: '#FF6361', count: 12 },
+  { id: 'desserts', name: 'Desserts', icon: Cake, color: '#58508D', count: 25 },
+  { id: 'street-food', name: 'Street Food', icon: Utensils, color: '#FF6361', count: 45 },
+  { id: 'local-cuisine', name: 'Local Cuisine', icon: Utensils, color: '#58508D', count: 38 },
 ];
 
 export default function CategoriesScreen() {
@@ -39,16 +39,16 @@ export default function CategoriesScreen() {
       >
         <View style={[
           styles.categoryIconContainer,
-          isSelected && { backgroundColor: '#4F46E5' }
+          isSelected && { backgroundColor: '#FF6361' }
         ]}>
           <IconComponent 
-            size={28} 
+            size={32} 
             color={isSelected ? '#FFFFFF' : category.color} 
           />
         </View>
         <Text style={[
           styles.categoryName,
-          isSelected && { color: '#4F46E5', fontWeight: '700' }
+          isSelected && { color: '#DC2626', fontWeight: '600' }
         ]}>
           {category.name}
         </Text>
@@ -61,7 +61,7 @@ export default function CategoriesScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <LinearGradient
-        colors={['#6366F1', '#8B5CF6']}
+        colors={['#4ECDC4', '#44A08D', '#F7931E', '#FF6B35']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.header}
@@ -71,7 +71,7 @@ export default function CategoriesScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <ArrowLeft size={24} color="#1E293B" />
+            <ArrowLeft size={24} color="#2F4858" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Categories</Text>
           <View style={styles.placeholder} />
@@ -94,11 +94,11 @@ export default function CategoriesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFBFC',
+    backgroundColor: '#F7F7F7',
   },
   header: {
-    paddingHorizontal: 24,
-    paddingVertical: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
   headerContent: {
     flexDirection: 'row',
@@ -106,77 +106,72 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   backButton: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1E293B',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2F4858',
   },
   placeholder: {
-    width: 44,
+    width: 40,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 20,
-    paddingBottom: 32,
+    gap: 16,
+    paddingBottom: 20,
   },
   categoryWrapper: {
-    width: '46%',
+    width: '47%',
   },
   categoryCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 28,
+    borderRadius: 20,
+    padding: 24,
     alignItems: 'center',
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
     shadowRadius: 12,
-    elevation: 4,
+    elevation: 6,
     borderWidth: 2,
     borderColor: 'transparent',
   },
   categoryCardSelected: {
-    borderColor: '#4F46E5',
-    shadowColor: '#4F46E5',
-    shadowOpacity: 0.2,
+    borderColor: '#FF6361',
+    shadowColor: '#FF6361',
+    shadowOpacity: 0.3,
   },
   categoryIconContainer: {
-    width: 68,
-    height: 68,
-    borderRadius: 24,
-    backgroundColor: '#F8FAFC',
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: '#F7F7F7',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   categoryName: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 10,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2F4858',
+    marginBottom: 8,
     textAlign: 'center',
   },
   categoryCount: {
     fontSize: 14,
-    color: '#64748B',
+    color: '#9B9B9B',
     textAlign: 'center',
   },
 });
