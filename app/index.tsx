@@ -1,6 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { ActivityIndicator, View } from 'react-native';
 
 // This is the dedicated entry point of your app.
 export default function Index() {
@@ -8,19 +7,8 @@ export default function Index() {
   // determines the user's authentication state and redirects them.
   // This prevents the login screen from flashing for an already-logged-in user.
   return (
-    <LinearGradient 
-      colors={['#E53E3E', '#3B82F6']} 
-      style={styles.container}
-    >
-      <ActivityIndicator size="large" color="#FFFFFF" />
-    </LinearGradient>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <ActivityIndicator size="large" color="#58508D" />
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
