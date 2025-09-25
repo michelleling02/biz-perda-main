@@ -1,18 +1,26 @@
-import { Stack } from 'expo-router';
 import React from 'react';
-import { StatusBar } from 'expo-status-bar';
-      <Image 
-        source={require('../assets/images/perdaventures-logo.png')} 
-        style={styles.logo}
-        resizeMode="contain"
-      />
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
-export default function AuthLayout() {
+// This is the dedicated entry point of your app.
+export default function Index() {
+  // It shows a loading indicator while the AuthProvider in the root layout
+  // determines the user's authentication state and redirects them.
+  // This prevents the login screen from flashing for an already-logged-in user.
   return (
+    <LinearGradient 
+      colors={['#E53E3E', '#3B82F6']} 
+      style={styles.container}
+    >
+      <ActivityIndicator size="large" color="#FFFFFF" />
+    </LinearGradient>
+  );
 }
 
-  logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 40,
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+});
