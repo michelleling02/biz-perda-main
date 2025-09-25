@@ -1,60 +1,62 @@
+                style={styles.actionButtonGradient}
+              >
+        <ActivityIndicator size="large" color="#3B82F6" style={{ flex: 1 }} />
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Utensils } from 'lucide-react-native';
+import { StatusBar } from 'expo-status-bar';
+import { StatusBar } from 'expo-status-bar';
 
-export default function RestaurantDetailsScreen() {
-  return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient 
-        colors={['#E53E3E', '#3B82F6']} 
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <Utensils size={32} color="#ffffff" />
-          <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>Restaurant Details</Text>
-            <Text style={styles.headerSubtitle}>Detailed restaurant information</Text>
-          </View>
-        </View>
-      </LinearGradient>
-      
-      <View style={styles.content}>
-        <View style={styles.comingSoon}>
-          <Utensils size={80} color="#E2E8F0" />
-          <Text style={styles.comingSoonTitle}>Restaurant Details Coming Soon</Text>
-          <Text style={styles.comingSoonText}>
-            We're working on bringing you detailed restaurant information, reviews, and more.
-          </Text>
-        </View>
-      </View>
-    </SafeAreaView>
-  );
-}
-
-const styles = StyleSheet.create({
+              <LinearGradient 
   container: { flex: 1, backgroundColor: '#FFFFFF' },
-  header: { paddingHorizontal: 32, paddingVertical: 36 },
-  headerContent: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  headerText: { flex: 1 },
-  headerTitle: { fontSize: 32, fontWeight: 'bold', color: '#ffffff' },
-  headerSubtitle: { fontSize: 16, color: 'rgba(255,255,255,0.9)', marginTop: 4 },
-  content: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  comingSoon: { alignItems: 'center', paddingHorizontal: 40 },
-  comingSoonTitle: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
-    color: '#1F2937', 
-    marginTop: 24, 
-    marginBottom: 16 
-  },
-  comingSoonText: { 
-    fontSize: 16, 
-    color: '#64748B', 
-    textAlign: 'center', 
-    lineHeight: 24 
-  },
-});
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 16, backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
+  backButton: { padding: 12, backgroundColor: '#F8FAFC', borderRadius: 12 },
+  headerTitle: { flex: 1, textAlign: 'center', fontSize: 20, fontWeight: '700', color: '#1F2937', marginHorizontal: 16 },
+  shareButton: { padding: 12, backgroundColor: '#F8FAFC', borderRadius: 12 },
+  return (
+  galleryScrollView: { height: 300 },
+  galleryImage: { width: width, height: 300, backgroundColor: '#F8FAFC' },
+      >
+  favoriteButton: { position: 'absolute', top: 310, right: 24, backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 28, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6, zIndex: 1 },
+  restaurantInfo: { backgroundColor: '#ffffff', marginTop: -24, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingTop: 36 },
+  restaurantName: { fontSize: 32, fontWeight: 'bold', color: '#1F2937', marginBottom: 12 },
+  ratingSummary: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
+    </>
+  ratingText: { fontSize: 17, fontWeight: '600', color: '#6B7280' },
+  description: { fontSize: 16, color: '#6B7280', lineHeight: 26, marginBottom: 28 },
+  section: { marginBottom: 28 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  sectionTitle: { fontSize: 22, fontWeight: '700', color: '#1F2937' },
+  writeReviewButton: { backgroundColor: '#FEF2F2', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#FECACA' },
+  writeReviewButtonText: { color: '#E53E3E', fontWeight: '600', fontSize: 14 },
+  reviewPlaceholder: { padding: 28, backgroundColor: '#F8FAFC', borderRadius: 16, alignItems: 'center', gap: 12 },
+  reviewPlaceholderText: { color: '#9CA3AF', fontStyle: 'italic', fontSize: 16 },
+  reviewList: { gap: 20 },
+  reviewCard: { backgroundColor: '#F8FAFC', padding: 20, borderRadius: 16, borderWidth: 1, borderColor: '#F3F4F6' },
+  reviewCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  reviewAuthorInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  reviewAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#E5E7EB', justifyContent: 'center', alignItems: 'center' },
+  reviewAuthorName: { fontSize: 15, fontWeight: '600', color: '#374151' },
+  reviewComment: { fontSize: 15, color: '#6B7280', lineHeight: 22 },
+  contactRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 16 },
+  contactText: { fontSize: 16, color: '#374151', flex: 1 },
+  actionButtons: { flexDirection: 'row', gap: 16, marginTop: 28 },
+  callButton: { flex: 1, borderRadius: 16, overflow: 'hidden', shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
+  navigateButton: { flex: 1, borderRadius: 16, overflow: 'hidden', shadowColor: '#E53E3E', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
+  actionButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, gap: 12 },
+  actionButtonText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
+  modalCloseButton: { position: 'absolute', top: 60, right: 20, zIndex: 1, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 24, padding: 12 },
+  reviewModalContainer: { flex: 1, backgroundColor: '#FFFFFF' },
+  reviewModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  reviewModalTitle: { fontSize: 20, fontWeight: '700', color: '#1F2937', flex: 1, marginRight: 20 },
+  reviewModalContent: { padding: 24 },
+  reviewLabel: { fontSize: 17, fontWeight: '600', color: '#374151', marginBottom: 16 },
+  starContainer: { flexDirection: 'row', gap: 20, marginBottom: 32 },
+  reviewInput: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, padding: 20, fontSize: 16, color: '#1F2937', height: 140, textAlignVertical: 'top', marginBottom: 32, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
+  submitReviewButton: { backgroundColor: '#3B82F6', paddingVertical: 18, borderRadius: 16, alignItems: 'center', shadowColor: '#3B82F6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
+  submitReviewButtonText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
+  badgeSection: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
+  badge: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  badgeText: { fontSize: 13, fontWeight: '600' },
+  categoryBadge: { backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA' },
+  categoryBadgeText: { color: '#E53E3E' },
+  tagBadge: { backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#DBEAFE' },
+  tagBadgeText: { color: '#3B82F6' },
