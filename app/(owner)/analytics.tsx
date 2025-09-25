@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChartBar as BarChart3 } from 'lucide-react-native';
+import { BarChart3 } from 'lucide-react-native';
 
 export default function AnalyticsScreen() {
   return (
