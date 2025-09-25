@@ -1,62 +1,336 @@
-                style={styles.actionButtonGradient}
-              >
-        <ActivityIndicator size="large" color="#3B82F6" style={{ flex: 1 }} />
-import React from 'react';
-import { StatusBar } from 'expo-status-bar';
-import { StatusBar } from 'expo-status-bar';
+import React, { useState, useCallback } from 'react';
+import {
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Dimensions, Modal, ActivityIndicator, Alert, FlatList, TextInput,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { 
+  ArrowLeft, MapPin, Heart, Share, X, Phone, Clock, Navigation, Star, MessageSquare, User,
+} from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { supabase } from '../../lib/supabase';
 
-              <LinearGradient 
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 16, backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
-  backButton: { padding: 12, backgroundColor: '#F8FAFC', borderRadius: 12 },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 20, fontWeight: '700', color: '#1F2937', marginHorizontal: 16 },
-  shareButton: { padding: 12, backgroundColor: '#F8FAFC', borderRadius: 12 },
+const { width } = Dimensions.get('window');
+
+type ShopDetailsWithRelations = {
+  shop_id: number;
+  name: string;
+  description: string;
+  address: string;
+  phone_number: string;
+  operating_hours: string;
+  categories: string[] | null;
+  tags: string[] | null;
+  owner_user_id: string; 
+  photos: { url: string; type: string; }[];
+};
+
+export default function RestaurantDetailsScreen() {
+  const params = useLocalSearchParams<{ restaurantId?: string }>();
+  // --- THIS IS THE FIX (Part 1) ---
+  // Ensure restaurantId is a single string, not an array or undefined.
+  const restaurantId = Array.isArray(params.restaurantId) ? params.restaurantId[0] : params.restaurantId;
+  // --- END OF FIX ---
+  
+  const [shop, setShop] = useState<ShopDetailsWithRelations | null>(null);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [avgRating, setAvgRating] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [reviewText, setReviewText] = useState('');
+  const [starRating, setStarRating] = useState(0);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  const fetchShopDetails = useCallback(async (id: string) => {
+    // --- THIS IS THE FIX (Part 2) ---
+    // The function now receives a guaranteed valid ID string.
+    setIsLoading(true);
+    try {
+      supabase.rpc('log_shop_view', { p_shop_id_to_log: id }).then(({ error: rpcError }) => {
+        if (rpcError) console.error('Supabase RPC call to log_shop_view failed:', rpcError);
+      });
+
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { data: shopData, error: shopError } = await supabase
+        .rpc('get_shop_details_with_relations', { p_shop_id: Number(id) }) // Use the validated id
+        .single();
+      
+      if (shopError) throw shopError;
+      if (!shopData) {
+        // This case now correctly means the ID was not found in the database.
+        setShop(null);
+        return;
+      };
+
+      const typedShopData = shopData as { shop_id: number; owner_user_id: string; name: string; };
+
+      const { data: reviewsData, error: reviewsError } = await supabase
+        .from('reviews')
+        .select('*, profiles(name)')
+        .eq('shop_id', typedShopData.shop_id);
+      
+      if (reviewsError) throw reviewsError;
+      const totalRating = (reviewsData || []).reduce((acc: number, review: any) => acc + review.rating, 0);
+      const average = reviewsData.length > 0 ? totalRating / reviewsData.length : 0;
+      setAvgRating(average);
+      setReviews(reviewsData || []);
+
+      if (user) {
+        const { data: favoriteData } = await supabase.from('shopfavourites').select('shop_id').eq('user_id', user.id).eq('shop_id', typedShopData.shop_id).maybeSingle();
+        setIsFavorite(!!favoriteData);
+      }
+
+      const { data: photoPaths } = await supabase.from('shopphotos').select('photo_url, type').eq('shop_id', typedShopData.shop_id);
+      const signedPhotos = await Promise.all(
+        (photoPaths || []).map(async (photo) => {
+          let url = 'https://placehold.co/600x400?text=No+Image';
+          if (photo.photo_url  ) {
+            const { data } = await supabase.storage.from('shop-images').createSignedUrl(photo.photo_url, 3600);
+            if (data) url = data.signedUrl;
+          }
+          return { url, type: photo.type };
+        })
+      );
+      
+      const completeShopData = { ...shopData, photos: signedPhotos };
+      setShop(completeShopData as ShopDetailsWithRelations);
+
+    } catch (error: any) {
+      console.error("Error fetching shop details:", error);
+      Alert.alert("Error", `Could not load restaurant details: ${error.message}`);
+      setShop(null); // Ensure shop is null on error
+    } finally {
+      setIsLoading(false);
+    }
+  }, []); // Removed restaurantId from dependency array as it's handled in useFocusEffect
+
+  useFocusEffect(
+    useCallback(() => {
+      // --- THIS IS THE FIX (Part 3) ---
+      // Add a strict check here. Only call fetchShopDetails if we have a valid ID.
+      if (restaurantId && typeof restaurantId === 'string') {
+        setShop(null); // Reset previous state
+        fetchShopDetails(restaurantId);
+      } else {
+        // If no valid ID is found, stop loading and show the "not found" state.
+        setIsLoading(false);
+        setShop(null);
+      }
+      // --- END OF FIX ---
+    }, [restaurantId, fetchShopDetails])
+  );
+
+  // ... (the rest of the functions like toggleFavorite, handleReviewSubmit, etc. remain the same)
+  const toggleFavorite = async () => {
+    if (isTogglingFavorite) return;
+    setIsTogglingFavorite(true);
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      Alert.alert('Please log in', 'You need to be logged in to save favorites.');
+      setIsTogglingFavorite(false);
+      return;
+    }
+
+    if (!shop || !shop.shop_id) {
+        Alert.alert('Error', 'Shop details are not available.');
+        setIsTogglingFavorite(false);
+        return;
+    }
+
+    if (isFavorite) {
+      const { error } = await supabase
+        .from('shopfavourites')
+        .delete()
+        .match({ shop_id: shop.shop_id, user_id: user.id });
+
+      if (error) Alert.alert('Error', 'Could not remove from favorites.');
+      else setIsFavorite(false);
+    } else {
+      const { data: insertData, error: insertError } = await supabase
+        .from('shopfavourites')
+        .insert({ shop_id: shop.shop_id, user_id: user.id })
+        .select()
+        .single();
+
+      if (insertError) {
+        Alert.alert('Error', 'Could not add to favorites.');
+      } else {
+        setIsFavorite(true);
+        if (insertData && shop.owner_user_id) {
+          const { error: notificationError } = await supabase
+            .from('notifications')
+            .insert({
+              recipient_user_id: shop.owner_user_id,
+              title: 'Your shop was favorited!',
+              message: `A customer added "${shop.name}" to their favorites.`,
+            });
+
+          if (notificationError) console.error("Failed to send 'new favorite' notification:", notificationError);
+        }
+      }
+    }
+    setIsTogglingFavorite(false);
+  };
+
+  const handleReviewSubmit = async () => {
+    if (starRating === 0) { Alert.alert('Rating Required', 'Please select a star rating.'); return; }
+    if (!reviewText.trim()) { Alert.alert('Review Required', 'Please write a few words for your review.'); return; }
+    setIsSubmittingReview(true);
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { Alert.alert('Not Logged In', 'You must be logged in to leave a review.'); setIsSubmittingReview(false); return; }
+    if (!shop) { Alert.alert('Error', 'Shop details not found.'); setIsSubmittingReview(false); return; }
+
+    const { data: reviewData, error: reviewError } = await supabase
+      .from('reviews')
+      .insert({ shop_id: shop.shop_id, user_id: user.id, comment: reviewText, rating: starRating })
+      .select()
+      .single();
+
+    if (reviewError) {
+      setIsSubmittingReview(false);
+      Alert.alert('Error', 'Failed to submit review: ' + reviewError.message);
+      return;
+    }
+
+    if (reviewData && shop.owner_user_id) {
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .insert({ recipient_user_id: shop.owner_user_id, title: `You have a new ${starRating}-star review!`, message: `A customer left a review for your shop "${shop.name}".` });
+      if (notificationError) console.error("Failed to send 'new review' notification:", notificationError);
+    }
+
+    setIsSubmittingReview(false);
+    Alert.alert('Success', 'Your review has been submitted!');
+    setReviewModalVisible(false);
+    setReviewText('');
+    setStarRating(0);
+    fetchShopDetails(String(shop.shop_id));
+  };
+
+  const handleNavigatePress = () => {
+    if (!restaurantId) return;
+    router.push({
+      pathname: '/(customer)/map',
+      params: { highlightShopId: restaurantId },
+    });
+  };
+
+  const openImageModal = (index: number) => { setSelectedImageIndex(index); setImageModalVisible(true); };
+  const renderStars = (rating: number, size: number = 16) => { const stars = []; for (let i = 1; i <= 5; i++) { stars.push(<Star key={i} size={size} color={i <= rating ? '#fbbf24' : '#cbd5e1'} fill={i <= rating ? '#fbbf24' : 'transparent'} />); } return stars; };
+
+  // The rendering logic remains the same, but it's now more reliable.
+  if (isLoading) { return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color="#58508D" style={{ flex: 1 }} /></SafeAreaView>; }
+  if (!shop) { return <SafeAreaView style={styles.container}><View style={styles.header}><TouchableOpacity style={styles.backButton} onPress={() => router.back()}><ArrowLeft size={24} color="#1e293b" /></TouchableOpacity></View><View style={styles.notFoundContainer}><Text>Restaurant not found.</Text></View></SafeAreaView>; }
+  
   return (
-  galleryScrollView: { height: 300 },
-  galleryImage: { width: width, height: 300, backgroundColor: '#F8FAFC' },
-      >
-  favoriteButton: { position: 'absolute', top: 310, right: 24, backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 28, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6, zIndex: 1 },
-  restaurantInfo: { backgroundColor: '#ffffff', marginTop: -24, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingTop: 36 },
-  restaurantName: { fontSize: 32, fontWeight: 'bold', color: '#1F2937', marginBottom: 12 },
-  ratingSummary: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
-    </>
-  ratingText: { fontSize: 17, fontWeight: '600', color: '#6B7280' },
-  description: { fontSize: 16, color: '#6B7280', lineHeight: 26, marginBottom: 28 },
-  section: { marginBottom: 28 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  sectionTitle: { fontSize: 22, fontWeight: '700', color: '#1F2937' },
-  writeReviewButton: { backgroundColor: '#FEF2F2', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#FECACA' },
-  writeReviewButtonText: { color: '#E53E3E', fontWeight: '600', fontSize: 14 },
-  reviewPlaceholder: { padding: 28, backgroundColor: '#F8FAFC', borderRadius: 16, alignItems: 'center', gap: 12 },
-  reviewPlaceholderText: { color: '#9CA3AF', fontStyle: 'italic', fontSize: 16 },
-  reviewList: { gap: 20 },
-  reviewCard: { backgroundColor: '#F8FAFC', padding: 20, borderRadius: 16, borderWidth: 1, borderColor: '#F3F4F6' },
-  reviewCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  reviewAuthorInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  reviewAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#E5E7EB', justifyContent: 'center', alignItems: 'center' },
-  reviewAuthorName: { fontSize: 15, fontWeight: '600', color: '#374151' },
-  reviewComment: { fontSize: 15, color: '#6B7280', lineHeight: 22 },
-  contactRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 16 },
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}><TouchableOpacity style={styles.backButton} onPress={() => router.back()}><ArrowLeft size={24} color="#1e293b" /></TouchableOpacity><Text style={styles.headerTitle} numberOfLines={1}>{shop.name}</Text><TouchableOpacity style={styles.shareButton}><Share size={24} color="#1e293b" /></TouchableOpacity></View>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <FlatList data={shop.photos} keyExtractor={(item, index) => item.url + index} horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={styles.galleryScrollView} renderItem={({ item, index }) => (<TouchableOpacity onPress={() => openImageModal(index)}><Image source={{ uri: item.url }} style={styles.galleryImage} /></TouchableOpacity>)} ListEmptyComponent={() => <View style={[styles.galleryImage, styles.placeholderImage]}><Text>No Images Available</Text></View>} />
+        <TouchableOpacity style={styles.favoriteButton} onPress={toggleFavorite} disabled={isTogglingFavorite}><Heart size={24} color={isFavorite ? '#ef4444' : '#64748b'} fill={isFavorite ? '#ef4444' : 'transparent'} /></TouchableOpacity>
+        <View style={styles.restaurantInfo}>
+          <Text style={styles.restaurantName}>{shop.name}</Text>
+          
+          <View style={styles.badgeSection}>
+            {shop.categories?.map((cat, i) => <View key={`cat-${i}`} style={[styles.badge, styles.categoryBadge]}><Text style={[styles.badgeText, styles.categoryBadgeText]}>{cat}</Text></View>)}
+            {shop.tags?.map((tag, i) => <View key={`tag-${i}`} style={[styles.badge, styles.tagBadge]}><Text style={[styles.badgeText, styles.tagBadgeText]}>{tag}</Text></View>)}
+          </View>
+
+          <View style={styles.ratingSummary}><View style={styles.starDisplay}>{renderStars(avgRating, 20)}</View><Text style={styles.ratingText}>{avgRating.toFixed(1)} ({reviews.length} reviews)</Text></View>
+          <Text style={styles.description}>{shop.description || 'No description provided.'}</Text>
+          
+          <View style={styles.section}><View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Reviews</Text><TouchableOpacity style={styles.writeReviewButton} onPress={() => setReviewModalVisible(true)}><Text style={styles.writeReviewButtonText}>Write a Review</Text></TouchableOpacity></View>{reviews.length > 0 ? <View style={styles.reviewList}>{reviews.map((review, index) => (<View key={index} style={styles.reviewCard}><View style={styles.reviewCardHeader}><View style={styles.reviewAuthorInfo}><View style={styles.reviewAvatar}><User size={16} color="#4f46e5" /></View><Text style={styles.reviewAuthorName}>{review.profiles?.name || 'A User'}</Text></View><View style={styles.starDisplay}>{renderStars(review.rating)}</View></View><Text style={styles.reviewComment}>{review.comment}</Text></View>))}</View> : <View style={styles.reviewPlaceholder}><MessageSquare size={24} color="#94a3b8" /><Text style={styles.reviewPlaceholderText}>Be the first to leave a review!</Text></View>}</View>
+          <View style={styles.section}><Text style={styles.sectionTitle}>Contact & Location</Text><View style={styles.contactRow}><MapPin size={20} color="#64748b" /><Text style={styles.contactText}>{shop.address || 'No address'}</Text></View>{shop.phone_number && <View style={styles.contactRow}><Phone size={20} color="#64748b" /><Text style={styles.contactText}>{shop.phone_number}</Text></View>}{shop.operating_hours && <View style={styles.contactRow}><Clock size={20} color="#64748b" /><Text style={styles.contactText}>{shop.operating_hours}</Text></View>}</View>
+          
+          <View style={styles.actionButtons}>
+            <TouchableOpacity style={styles.callButton}>
+              <LinearGradient colors={['#10b981', '#059669']} style={styles.actionButtonGradient}>
+                <Phone size={20} color="#ffffff" />
+                <Text style={styles.actionButtonText}>Call Now</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.navigateButton} onPress={handleNavigatePress}>
+              <LinearGradient colors={['#ff6b35', '#f7931e']} style={styles.actionButtonGradient}>
+                <Navigation size={20} color="#ffffff" />
+                <Text style={styles.actionButtonText}>Navigate</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+        </View>
+      </ScrollView>
+      <Modal visible={imageModalVisible} animationType="fade" transparent={true} onRequestClose={() => setImageModalVisible(false)}><View style={styles.modalContainer}><TouchableOpacity style={styles.modalCloseButton} onPress={() => setImageModalVisible(false)}><X size={24} color="#ffffff" /></TouchableOpacity><Image source={{ uri: shop?.photos?.[selectedImageIndex]?.url }} style={styles.modalImage} resizeMode="contain" /></View></Modal>
+      <Modal visible={reviewModalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setReviewModalVisible(false)}><SafeAreaView style={styles.reviewModalContainer}><View style={styles.reviewModalHeader}><Text style={styles.reviewModalTitle}>Write a Review for {shop?.name}</Text><TouchableOpacity onPress={() => setReviewModalVisible(false)}><X size={24} color="#64748b" /></TouchableOpacity></View><ScrollView style={styles.reviewModalContent}><Text style={styles.reviewLabel}>Your Rating</Text><View style={styles.starContainer}>{[1, 2, 3, 4, 5].map((index) => (<TouchableOpacity key={index} onPress={() => setStarRating(index)}><Star size={40} color={index <= starRating ? '#fbbf24' : '#cbd5e1'} fill={index <= starRating ? '#fbbf24' : 'transparent'} /></TouchableOpacity>))}</View><Text style={styles.reviewLabel}>Your Review</Text><TextInput style={styles.reviewInput} placeholder="Share your experience..." multiline value={reviewText} onChangeText={setReviewText} /><TouchableOpacity style={[styles.submitReviewButton, isSubmittingReview && { opacity: 0.7 }]} onPress={handleReviewSubmit} disabled={isSubmittingReview}>{isSubmittingReview ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.submitReviewButtonText}>Submit Review</Text>}</TouchableOpacity></ScrollView></SafeAreaView></Modal>
+    </SafeAreaView>
+   );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f8fafc' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+  backButton: { padding: 8 },
+  headerTitle: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '600', color: '#1e293b', marginHorizontal: 10 },
+  shareButton: { padding: 8 },
+  content: { flex: 1 },
+  galleryScrollView: { height: 280 },
+  galleryImage: { width: width, height: 280, backgroundColor: '#f1f5f9' },
+  placeholderImage: { justifyContent: 'center', alignItems: 'center' },
+  favoriteButton: { position: 'absolute', top: 290, right: 20, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 24, padding: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4, zIndex: 1 },
+  restaurantInfo: { backgroundColor: '#ffffff', marginTop: -20, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingTop: 30 },
+  restaurantName: { fontSize: 28, fontWeight: 'bold', color: '#1e293b', marginBottom: 8 },
+  ratingSummary: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  starDisplay: { flexDirection: 'row', gap: 2 },
+  ratingText: { fontSize: 16, fontWeight: '600', color: '#64748b' },
+  description: { fontSize: 16, color: '#64748b', lineHeight: 24, marginBottom: 24 },
+  section: { marginBottom: 24 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  sectionTitle: { fontSize: 20, fontWeight: '600', color: '#1e293b' },
+  writeReviewButton: { backgroundColor: '#eef2ff', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  writeReviewButtonText: { color: '#4f46e5', fontWeight: '600', fontSize: 14 },
+  reviewPlaceholder: { padding: 20, backgroundColor: '#f8fafc', borderRadius: 12, alignItems: 'center', gap: 8 },
+  reviewPlaceholderText: { color: '#94a3b8', fontStyle: 'italic' },
+  reviewList: { gap: 16 },
+  reviewCard: { backgroundColor: '#f8fafc', padding: 16, borderRadius: 12 },
+  reviewCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  reviewAuthorInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  reviewAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#eef2ff', justifyContent: 'center', alignItems: 'center' },
+  reviewAuthorName: { fontSize: 14, fontWeight: '600', color: '#374151' },
+  reviewComment: { fontSize: 14, color: '#64748b', lineHeight: 20 },
+  contactRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 12 },
   contactText: { fontSize: 16, color: '#374151', flex: 1 },
-  actionButtons: { flexDirection: 'row', gap: 16, marginTop: 28 },
-  callButton: { flex: 1, borderRadius: 16, overflow: 'hidden', shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
-  navigateButton: { flex: 1, borderRadius: 16, overflow: 'hidden', shadowColor: '#E53E3E', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
-  actionButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, gap: 12 },
-  actionButtonText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
-  modalCloseButton: { position: 'absolute', top: 60, right: 20, zIndex: 1, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 24, padding: 12 },
-  reviewModalContainer: { flex: 1, backgroundColor: '#FFFFFF' },
-  reviewModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  reviewModalTitle: { fontSize: 20, fontWeight: '700', color: '#1F2937', flex: 1, marginRight: 20 },
-  reviewModalContent: { padding: 24 },
-  reviewLabel: { fontSize: 17, fontWeight: '600', color: '#374151', marginBottom: 16 },
-  starContainer: { flexDirection: 'row', gap: 20, marginBottom: 32 },
-  reviewInput: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, padding: 20, fontSize: 16, color: '#1F2937', height: 140, textAlignVertical: 'top', marginBottom: 32, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
-  submitReviewButton: { backgroundColor: '#3B82F6', paddingVertical: 18, borderRadius: 16, alignItems: 'center', shadowColor: '#3B82F6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
-  submitReviewButtonText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
-  badgeSection: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
-  badge: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-  badgeText: { fontSize: 13, fontWeight: '600' },
-  categoryBadge: { backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA' },
-  categoryBadgeText: { color: '#E53E3E' },
-  tagBadge: { backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#DBEAFE' },
-  tagBadgeText: { color: '#3B82F6' },
+  actionButtons: { flexDirection: 'row', gap: 12, marginTop: 20 },
+  callButton: { flex: 1, borderRadius: 12, overflow: 'hidden' },
+  navigateButton: { flex: 1, borderRadius: 12, overflow: 'hidden' },
+  actionButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, gap: 8 },
+  actionButtonText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
+  modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' },
+  modalCloseButton: { position: 'absolute', top: 60, right: 20, zIndex: 1, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 20, padding: 8 },
+  modalImage: { width: width, height: '100%' },
+  notFoundContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  reviewModalContainer: { flex: 1, backgroundColor: '#f8fafc' },
+  reviewModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+  reviewModalTitle: { fontSize: 18, fontWeight: '600', color: '#1e293b', flex: 1, marginRight: 16 },
+  reviewModalContent: { padding: 20 },
+  reviewLabel: { fontSize: 16, fontWeight: '500', color: '#374151', marginBottom: 12 },
+  starContainer: { flexDirection: 'row', gap: 16, marginBottom: 24 },
+  reviewInput: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, padding: 16, fontSize: 16, color: '#1e293b', height: 120, textAlignVertical: 'top', marginBottom: 24 },
+  submitReviewButton: { backgroundColor: '#4f46e5', paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
+  submitReviewButtonText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
+  badgeSection: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
+  badgeText: { fontSize: 12, fontWeight: '500' },
+  categoryBadge: { backgroundColor: '#dbeafe', borderWidth: 1, borderColor: '#bfdbfe' },
+  categoryBadgeText: { color: '#1e40af' },
+  tagBadge: { backgroundColor: '#f1f5f9' },
+  tagBadgeText: { color: '#475569' },
+});
