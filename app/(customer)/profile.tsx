@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Settings, Bell, MapPin, Heart, Star, LogOut, ChevronRight, Shield, CircleHelp as HelpCircle, Mail } from 'lucide-react-native';
+import { User, Settings, Bell, MapPin, Heart, Star, LogOut, ChevronRight, Shield, HelpCircle, Mail } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, router } from 'expo-router';
 import { supabase } from '../../lib/supabase'; // Use the global Supabase client
