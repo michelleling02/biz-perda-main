@@ -148,31 +148,56 @@ export default function AnalyticsScreen() {
   );
 
   const StackedBarChart = ({ data }: { data: EngagementStat[] }) => {
+    // This first check for no data at all is still good practice.
     if (!data || data.length === 0) {
       return <Text style={styles.emptyChartText}>No data for this period.</Text>;
     }
+
     const maxTotal = Math.max(...data.map(item => (item.total_views || 0) + (item.total_favorites || 0) + (item.total_reviews || 0)), 1);
     const chartWidth = Dimensions.get('window').width - 80;
     const barWidth = chartWidth / data.length;
 
+    // --- THIS IS THE FIX ---
+    // Check if the grand total of all data is zero.
+    const grandTotal = data.reduce((acc, item) => acc + (item.total_views || 0) + (item.total_favorites || 0) + (item.total_reviews || 0), 0);
+
+    // If everything is zero, show the empty state message.
+    if (grandTotal === 0) {
+      return (
+        <View style={styles.chartContainer}>
+          <Text style={styles.chartTitle}>Engagement ({selectedPeriod})</Text>
+          <View style={{ height: 160, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={styles.emptyChartText}>No engagement data for this period yet.</Text>
+          </View>
+          <View style={styles.chartLegend}>
+            <View style={styles.legendItem}><View style={[styles.legendColor, { backgroundColor: '#0891b2' }]} /><Text style={styles.legendText}>Views</Text></View>
+            <View style={styles.legendItem}><View style={[styles.legendColor, { backgroundColor: '#ef4444' }]} /><Text style={styles.legendText}>Favorites</Text></View>
+            <View style={styles.legendItem}><View style={[styles.legendColor, { backgroundColor: '#10b981' }]} /><Text style={styles.legendText}>Reviews</Text></View>
+          </View>
+        </View>
+      );
+    }
+    // --- END OF FIX ---
+
+    // If there is data, render the chart as before.
     return (
       <View style={styles.chartContainer}>
         <Text style={styles.chartTitle}>Engagement ({selectedPeriod})</Text>
         <View style={styles.chart}>
           <Svg height="160" width={chartWidth}>
             {data.map((item, index) => {
-              const total = (item.total_views || 0) + (item.total_favorites || 0) + (item.total_reviews || 0);
-              const viewsHeight = (item.total_views / maxTotal) * 120;
-              const favsHeight = (item.total_favorites / maxTotal) * 120;
-              const reviewsHeight = (item.total_reviews / maxTotal) * 120;
+              const viewsHeight = ((item.total_views || 0) / maxTotal) * 120;
+              const favsHeight = ((item.total_favorites || 0) / maxTotal) * 120;
+              const reviewsHeight = ((item.total_reviews || 0) / maxTotal) * 120;
               const x = index * barWidth;
 
               return (
                 <G key={index}>
                   <G x={x + (barWidth - 20) / 2}>
-                    <Rect y={120 - viewsHeight} width={20} height={viewsHeight} fill="#0891b2" rx="4" />
-                    <Rect y={120 - viewsHeight - favsHeight} width={20} height={favsHeight} fill="#ef4444" rx="4" />
-                    <Rect y={120 - viewsHeight - favsHeight - reviewsHeight} width={20} height={reviewsHeight} fill="#10b981" rx="4" />
+                    {/* These checks were added, but the main fix is the grandTotal check above */}
+                    {viewsHeight > 0 && <Rect y={120 - viewsHeight} width={20} height={viewsHeight} fill="#0891b2" rx="4" />}
+                    {favsHeight > 0 && <Rect y={120 - viewsHeight - favsHeight} width={20} height={favsHeight} fill="#ef4444" rx="4" />}
+                    {reviewsHeight > 0 && <Rect y={120 - viewsHeight - favsHeight - reviewsHeight} width={20} height={reviewsHeight} fill="#10b981" rx="4" />}
                   </G>
                   <SvgText
                     x={x + barWidth / 2}
@@ -240,7 +265,29 @@ export default function AnalyticsScreen() {
               <StatCard icon={MessageSquare} title="Total Reviews" value={(overview?.total_reviews ?? 0).toLocaleString()} color="#10b981" />
             </View>
           </View>
-          <View style={styles.chartSection}><StackedBarChart data={engagementStats} /></View>
+          <View style={styles.chartSection}>
+            {
+              // First, calculate the grand total of all engagement stats
+              (engagementStats.reduce((acc, item) => acc + item.total_views + item.total_favorites + item.total_reviews, 0)) > 0 
+              ? (
+                // If the total is greater than 0, render the chart
+                <StackedBarChart data={engagementStats} />
+              ) : (
+                // Otherwise, render a placeholder
+                <View style={styles.chartContainer}>
+                  <Text style={styles.chartTitle}>Engagement ({selectedPeriod})</Text>
+                  <View style={{ height: 160, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={styles.emptyChartText}>No engagement data for this period yet.</Text>
+                  </View>
+                  <View style={styles.chartLegend}>
+                    <View style={styles.legendItem}><View style={[styles.legendColor, { backgroundColor: '#0891b2' }]} /><Text style={styles.legendText}>Views</Text></View>
+                    <View style={styles.legendItem}><View style={[styles.legendColor, { backgroundColor: '#ef4444' }]} /><Text style={styles.legendText}>Favorites</Text></View>
+                    <View style={styles.legendItem}><View style={[styles.legendColor, { backgroundColor: '#10b981' }]} /><Text style={styles.legendText}>Reviews</Text></View>
+                  </View>
+                </View>
+              )
+            }
+          </View>
           <View style={styles.shopsSection}>
             <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Shop Performance</Text><TouchableOpacity style={styles.filterButton}><Filter size={16} color="#64748b" /></TouchableOpacity></View>
             {shopPerformance.map((shop) => <ShopPerformanceCard key={shop.shop_id} shop={shop} />)}

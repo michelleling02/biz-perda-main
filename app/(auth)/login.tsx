@@ -1,3 +1,5 @@
+// app/login.tsx (or wherever your LoginScreen is located)
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -14,7 +16,6 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { ChefHat } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -24,19 +25,13 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const { session } = useAuth();
 
-  // --- THIS IS THE CORRECT AND FINAL FIX ---
-  // This single useEffect handles redirection safely after the component has mounted.
   useEffect(() => {
-    // If a session object exists (meaning the user is already logged in),
-    // call the function to redirect them to the correct part of the app.
     if (session) {
       handleRoleRedirect(session.user.id);
     }
-  }, [session]); // This effect runs only when the session object changes.
-  // -----------------------------------------
+  }, [session]);
 
   const handleRoleRedirect = async (userId: string) => {
-    // This function is safe to call from a useEffect.
     const { data: userRoleData, error: roleError } = await supabase
       .from('userroles')
       .select('*, roles(role_name)')
@@ -50,7 +45,7 @@ export default function LoginScreen() {
       return;
     }
 
-    const roleName = userRoleData.roles.role_name;
+    const roleName = (userRoleData.roles as any).role_name;
     switch (roleName) {
       case 'Customer':
         router.replace('/(customer)');
@@ -66,7 +61,6 @@ export default function LoginScreen() {
         await supabase.auth.signOut();
         break;
     }
-    // It's good practice to stop loading here, although the screen will be replaced.
     setIsLoading(false);
   };
 
@@ -78,54 +72,42 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-      // --- THIS IS THE FIX ---
-      // Step 1: Check the user's profile status BEFORE attempting to log in.
-      // We select from 'profiles' based on the email provided.
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('status')
-        .eq('email', username) // Use the email from the login form
+        .eq('email', username)
         .single();
 
-      // If there was an error fetching the profile (other than it not existing), stop.
       if (profileError && profileError.code !== 'PGRST116') {
         throw new Error("Could not verify user status. " + profileError.message);
       }
 
-      // Step 2: If a profile was found and the status is 'Suspended', block the login.
       if (profile && profile.status === 'Suspended') {
         throw new Error('Your account is suspended. Please contact support.');
       }
-      // --- END OF FIX ---
 
-      // Step 3: If the user is not suspended, proceed with the actual login.
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: username,
         password: password,
       });
 
       if (authError) {
-        throw authError; // Let the catch block handle the error message
+        throw authError;
       }
 
-      // On success, the useEffect will handle the redirect automatically.
-
     } catch (error: any) {
-      // A single catch block now handles all errors gracefully.
       setIsLoading(false);
       Alert.alert('Login Failed', error.message);
     }
-    // No need for a finally block if we handle setIsLoading in the catch.
   };
 
-  // The JSX for your component is unchanged.
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar barStyle="light-content" backgroundColor="#E53E3E" />
-      
+
       <LinearGradient
         colors={['#E53E3E', '#3B82F6']}
         style={styles.headerGradient}
@@ -140,7 +122,7 @@ export default function LoginScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.formContainer}>
           <Text style={styles.sectionTitle}>Welcome Back</Text>
-          
+
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Email</Text>
             <TextInput
@@ -181,15 +163,16 @@ export default function LoginScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
-          <View style={styles.credentialsInfo}>
-            <Text style={styles.credentialsTitle}>Test Credentials:</Text>
-            <Text style={styles.credentialsText}>
-              Email: abdulqayyum.anuar6@gmail.com
+          {/* --- SIGN UP LINK ADDED HERE --- */}
+          <TouchableOpacity
+            style={styles.signupLinkContainer}
+            onPress={() => router.push('/signup')}
+          >
+            <Text style={styles.signupLinkText}>
+              Don't have an account? <Text style={styles.signupLinkTextBold}>Sign Up</Text>
             </Text>
-            <Text style={styles.credentialsText}>
-              Password: [the password you set]
-            </Text>
-          </View>
+          </TouchableOpacity>
+          {/* --- END OF SIGN UP LINK --- */}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -266,7 +249,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     marginTop: 16,
-    marginBottom: 32,
+    // marginBottom is removed from here and added to the signup link container
     shadowColor: '#E53E3E',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -286,6 +269,21 @@ const styles = StyleSheet.create({
   loginButtonDisabled: {
     opacity: 0.7,
   },
+  // --- NEW STYLES ADDED HERE ---
+  signupLinkContainer: {
+    alignItems: 'center',
+    marginTop: 8, // A little space after the login button
+    marginBottom: 32, // Space before the credentials box
+  },
+  signupLinkText: {
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  signupLinkTextBold: {
+    fontWeight: 'bold',
+    color: '#3B82F6',
+  },
+  // --- END OF NEW STYLES ---
   credentialsInfo: {
     backgroundColor: '#FFFFFF',
     padding: 20,

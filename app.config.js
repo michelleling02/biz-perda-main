@@ -38,6 +38,9 @@ export default {
     "extra": {
       // --- THIS IS THE FIX ---
       // Use process.env here as well
+      "eas": {
+        "projectId": "c1a46817-e1a7-42ff-8c0b-02573ac830e7"
+      },
       "googleApiKey": process.env.EXPO_PUBLIC_GOOGLE_API_KEY
     }
   }
