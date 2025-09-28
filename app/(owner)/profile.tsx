@@ -45,16 +45,15 @@ export default function OwnerProfileScreen() {
           if (profileRes.error && profileRes.error.code !== 'PGRST116') throw profileRes.error;
           if (statsRes.error) throw statsRes.error;
 
-          // --- THIS IS THE FIX ---
-          // The 'profile_photo_url' from the database is already the correct public URL.
-          // We do not need to create a signed URL.
+          // --- FIX 1: Use the public URL directly from the database ---
+          // The URL stored in `profile_photo_url` is already the correct public URL.
+          // We do not need to create a signed URL for it.
           setProfile({
             name: profileRes.data?.name || 'New Owner',
             email: user.email || 'No email',
             joinDate: user.created_at,
             profilePhotoUrl: profileRes.data?.profile_photo_url, // Use the URL directly
           });
-          // --- END OF FIX ---
 
           const statsData = statsRes.data as ProfileStats;
           setStats({
@@ -91,14 +90,14 @@ export default function OwnerProfileScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#f97316" />
+        <ActivityIndicator size="large" color="#E53E3E" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#f97316', '#ea580c']} style={styles.header}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <LinearGradient colors={['#E53E3E', '#3B82F6']} style={styles.header}>
         <View style={styles.profileHeader}>
           <View style={styles.avatar}>
             {profile?.profilePhotoUrl ? (
@@ -121,9 +120,9 @@ export default function OwnerProfileScreen() {
         <View style={styles.statsContainer}>
           <Text style={styles.sectionTitle}>Business Overview</Text>
           <View style={styles.statsGrid}>
-            <StatCard icon={Store} title="Total Shops" value={stats?.total_shops ?? 0} color="#f97316" />
-            <StatCard icon={Eye} title="Total Views" value={(stats?.total_views ?? 0).toLocaleString()} color="#0891b2" />
-            <StatCard icon={Star} title="Avg Rating" value={(stats?.avg_rating ?? 0).toFixed(1)} color="#fbbf24" />
+            <StatCard icon={Store} title="Total Shops" value={stats?.total_shops ?? 0} color="#E53E3E" />
+            <StatCard icon={Eye} title="Total Views" value={(stats?.total_views ?? 0).toLocaleString()} color="#3B82F6" />
+            <StatCard icon={Star} title="Avg Rating" value={(stats?.avg_rating ?? 0).toFixed(1)} color="#f59e0b" />
           </View>
         </View>
 
@@ -164,31 +163,52 @@ const MenuItem = ({ icon: Icon, title, subtitle, onPress }: any) => (
 
 const StatCard = ({ icon: Icon, title, value, color }: any) => (
   <View style={styles.statCard}>
-    <LinearGradient colors={[color + '20', color + '10']} style={styles.statCardGradient}>
-      <Icon size={24} color={color} />
+    <LinearGradient colors={[color + '20', '#FFFFFF']} style={styles.statCardGradient}>
+      <View style={[styles.statIconContainer, { backgroundColor: color + '30' }]}>
+        <Icon size={20} color={color} />
+      </View>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statTitle}>{title}</Text>
     </LinearGradient>
   </View>
 );
 
+// --- FIX 2: Increased top padding in the content ScrollView ---
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
-  header: { paddingHorizontal: 20, paddingVertical: 24 },
+  container: { flex: 1, backgroundColor: '#F7F7F7' },
+  header: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 },
   profileHeader: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
   avatarImage: { width: '100%', height: '100%' },
   profileInfo: { flex: 1 },
   profileName: { fontSize: 22, fontWeight: 'bold', color: '#ffffff', marginBottom: 4 },
-  profileEmail: { fontSize: 14, color: '#fed7aa' },
+  profileEmail: { fontSize: 14, color: 'rgba(255,255,255,0.9)' },
   editButton: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: 10 },
-  content: { flex: 1 },
-  statsContainer: { padding: 20 },
+  content: { flex: 1, paddingTop: 30 }, // Increased top padding here
+  statsContainer: { paddingHorizontal: 20, marginBottom: 24 },
   sectionTitle: { fontSize: 18, fontWeight: '600', color: '#1e293b', marginBottom: 16 },
   statsGrid: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  statCard: { flex: 1, borderRadius: 16, overflow: 'hidden' },
+  statCard: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#9ca3af',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
   statCardGradient: { alignItems: 'center', padding: 20 },
-  statValue: { fontSize: 22, fontWeight: 'bold', color: '#1e293b', marginTop: 8, marginBottom: 4 },
+  statIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statValue: { fontSize: 22, fontWeight: 'bold', color: '#1e293b', marginBottom: 4 },
   statTitle: { fontSize: 13, color: '#64748b', fontWeight: '500', textAlign: 'center' },
   section: { paddingHorizontal: 20, marginBottom: 24 },
   menuContainer: { backgroundColor: '#ffffff', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#e2e8f0' },

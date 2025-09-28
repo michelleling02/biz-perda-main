@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Dimensions, Modal, ActivityIndicator, Alert, FlatList, TextInput, KeyboardAvoidingView, Platform,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Dimensions, Modal, ActivityIndicator, Alert, FlatList, TextInput, KeyboardAvoidingView, Platform, Share, // Import Share
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
-  ArrowLeft, MapPin, Heart, Share, X, Phone, Clock, Navigation, Star, MessageSquare, User, Image as ImageIcon, Crown, Send,
+  ArrowLeft, MapPin, Heart, Share as ShareIcon, X, Phone, Clock, Navigation, Star, MessageSquare, User, Image as ImageIcon, Crown, Send,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -26,7 +26,7 @@ type Review = {
   review_id: number; comment: string; rating: number; created_at: string; user_id: string;
   reviewer_name: string;
   reviewer_photo_url: string | null;
-  review_replies: Reply[] | null; // Replies can be null if there are none
+  review_replies: Reply[] | null;
 };
 
 export default function RestaurantDetailsScreen() {
@@ -63,8 +63,6 @@ export default function RestaurantDetailsScreen() {
     try {
       supabase.rpc('log_shop_view', { p_shop_id_to_log: id }).then(() => {});
 
-      // --- THIS IS THE FIX ---
-      // We now fetch everything in parallel, and the reviews come from the enhanced view.
       const [shopDataRes, reviewsFromViewRes, photoPathsRes] = await Promise.all([
         supabase.rpc('get_shop_details_with_relations', { p_shop_id: Number(id) }).single<ShopDetails>(),
         supabase.from('public_review_details').select('*').eq('shop_id', id).order('created_at', { ascending: false }),
@@ -80,14 +78,12 @@ export default function RestaurantDetailsScreen() {
 
       if (reviewsFromViewRes.error) throw reviewsFromViewRes.error;
       
-      // The view now gives us the reviews with the replies already attached!
       const reviewsData = (reviewsFromViewRes.data || []) as Review[];
       
       const totalRating = reviewsData.reduce((acc, review) => acc + review.rating, 0);
       const average = reviewsData.length > 0 ? totalRating / reviewsData.length : 0;
       setAvgRating(average);
       setReviews(reviewsData);
-      // --- END OF FIX ---
 
       if (user) {
         const { data: favoriteData } = await supabase.from('shopfavourites').select('shop_id').eq('user_id', user.id).eq('shop_id', id).maybeSingle();
@@ -125,6 +121,20 @@ export default function RestaurantDetailsScreen() {
       }
     }, [restaurantId, fetchShopDetails])
   );
+
+  // --- FIX 1: Implement the share functionality ---
+  const handleShare = async () => {
+    if (!shop) return;
+    try {
+      await Share.share({
+        message: `Check out this cool spot: ${shop.name}! Find it on our app.`,
+        // Optional: Add a URL to your app or website
+        // url: `yourapp://shop/${shop.shop_id}`
+      });
+    } catch (error: any) {
+      Alert.alert('Error', 'Could not share at this time.');
+    }
+  };
 
   const toggleFavorite = async () => {
     if (isTogglingFavorite || !user || !shop) return;
@@ -209,7 +219,14 @@ export default function RestaurantDetailsScreen() {
   
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}><TouchableOpacity style={styles.backButton} onPress={() => router.back()}><ArrowLeft size={24} color="#1e293b" /></TouchableOpacity><Text style={styles.headerTitle} numberOfLines={1}>{shop.name}</Text><TouchableOpacity style={styles.shareButton}><Share size={24} color="#1e293b" /></TouchableOpacity></View>
+      {/* --- FIX 1 (continued): Added onPress handler to the Share button --- */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}><ArrowLeft size={24} color="#1e293b" /></TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1}>{shop.name}</Text>
+        <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+          <ShareIcon size={24} color="#1e293b" />
+        </TouchableOpacity>
+      </View>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.mainPhotoContainer}>{mainPhoto ? (<TouchableOpacity onPress={() => openImageModal(mainPhoto.url)}><Image source={{ uri: mainPhoto.url }} style={styles.mainPhotoImage} /></TouchableOpacity>) : (<View style={[styles.mainPhotoImage, styles.placeholderImage]}><Text>No Image Available</Text></View>)}</View>
         <TouchableOpacity style={styles.favoriteButton} onPress={toggleFavorite} disabled={isTogglingFavorite}><Heart size={24} color={isFavorite ? '#ef4444' : '#64748b'} fill={isFavorite ? '#ef4444' : 'transparent'} /></TouchableOpacity>
@@ -219,10 +236,22 @@ export default function RestaurantDetailsScreen() {
           <View style={styles.ratingSummary}><View style={styles.starDisplay}>{renderStars(avgRating, 20)}</View><Text style={styles.ratingText}>{avgRating.toFixed(1)} ({reviews.length} reviews)</Text></View>
           <Text style={styles.description}>{shop.description || 'No description provided.'}</Text>
           
+          {/* --- FIX 2: Adjusted Gallery Section --- */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Gallery</Text>
             {galleryPhotos.length > 0 ? (
-              <FlatList data={galleryPhotos} keyExtractor={(item) => item.url} horizontal showsHorizontalScrollIndicator={false} renderItem={({ item }) => (<TouchableOpacity onPress={() => openImageModal(item.url)}><Image source={{ uri: item.url }} style={styles.horizontalGalleryImage} /></TouchableOpacity>)} contentContainerStyle={styles.horizontalGalleryContainer} />
+              <FlatList 
+                data={galleryPhotos} 
+                keyExtractor={(item) => item.url} 
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                renderItem={({ item }) => (
+                  <TouchableOpacity onPress={() => openImageModal(item.url)}>
+                    <Image source={{ uri: item.url }} style={styles.horizontalGalleryImage} />
+                  </TouchableOpacity>
+                )} 
+                contentContainerStyle={styles.horizontalGalleryContainer} 
+              />
             ) : (
               <View style={styles.galleryPlaceholder}><ImageIcon size={24} color="#94a3b8" /><Text style={styles.galleryPlaceholderText}>No other photos available.</Text></View>
             )}
@@ -250,7 +279,6 @@ export default function RestaurantDetailsScreen() {
                     </View>
                     <Text style={styles.reviewComment}>{review.comment}</Text>
                     
-                    {/* The view now provides the replies, so we can map them directly */}
                     {(review.review_replies || []).map(reply => (
                       <View key={reply.reply_id} style={styles.replyContainer}>
                         <View style={styles.reviewAuthorInfo}>
@@ -278,7 +306,26 @@ export default function RestaurantDetailsScreen() {
             )}
           </View>
 
-          <View style={styles.section}><Text style={styles.sectionTitle}>Contact & Location</Text><View style={styles.contactRow}><MapPin size={20} color="#64748b" /><Text style={styles.contactText}>{shop.address || 'No address'}</Text></View>{shop.phone_number && <View style={styles.contactRow}><Phone size={20} color="#64748b" /><Text style={styles.contactText}>{shop.phone_number}</Text></View>}{shop.operating_hours && <View style={styles.contactRow}><Clock size={20} color="#64748b" /><Text style={styles.contactText}>{shop.operating_hours}</Text></View>}</View>
+          {/* --- FIX 3: Adjusted Contact & Location Section --- */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Contact & Location</Text>
+            <View style={styles.contactRow}>
+              <MapPin size={20} color="#64748b" style={styles.contactIcon} />
+              <Text style={styles.contactText}>{shop.address || 'No address'}</Text>
+            </View>
+            {shop.phone_number && 
+              <View style={styles.contactRow}>
+                <Phone size={20} color="#64748b" style={styles.contactIcon} />
+                <Text style={styles.contactText}>{shop.phone_number}</Text>
+              </View>
+            }
+            {shop.operating_hours && 
+              <View style={styles.contactRow}>
+                <Clock size={20} color="#64748b" style={styles.contactIcon} />
+                <Text style={styles.contactText}>{shop.operating_hours}</Text>
+              </View>
+            }
+          </View>
           <View style={styles.actionButtons}><TouchableOpacity style={styles.callButton}><LinearGradient colors={['#10b981', '#059669']} style={styles.actionButtonGradient}><Phone size={20} color="#ffffff" /><Text style={styles.actionButtonText}>Call Now</Text></LinearGradient></TouchableOpacity><TouchableOpacity style={styles.navigateButton} onPress={handleNavigatePress}><LinearGradient colors={['#ff6b35', '#f7931e']} style={styles.actionButtonGradient}><Navigation size={20} color="#ffffff" /><Text style={styles.actionButtonText}>Navigate</Text></LinearGradient></TouchableOpacity></View>
         </View>
       </ScrollView>
@@ -305,6 +352,7 @@ export default function RestaurantDetailsScreen() {
   );
 }
 
+// --- FIX 4: Updated styles ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
@@ -332,9 +380,12 @@ const styles = StyleSheet.create({
   section: { marginBottom: 24 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   sectionTitle: { fontSize: 20, fontWeight: '600', color: '#1e293b' },
-  horizontalGalleryContainer: { gap: 10, paddingHorizontal: 20 },
+  horizontalGalleryContainer: { 
+    gap: 10, 
+    // Removed paddingHorizontal to let it anchor to the left edge of the parent container
+  },
   horizontalGalleryImage: { width: 120, height: 120, borderRadius: 12, backgroundColor: '#e2e8f0' },
-  galleryPlaceholder: { height: 120, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: 12, marginHorizontal: 20, flexDirection: 'row', gap: 8 },
+  galleryPlaceholder: { height: 120, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: 12, flexDirection: 'row', gap: 8 },
   galleryPlaceholderText: { color: '#9ca3af' },
   reviewPlaceholder: { padding: 20, backgroundColor: '#f8fafc', borderRadius: 12, alignItems: 'center', gap: 8 },
   reviewPlaceholderText: { color: '#94a3b8', fontStyle: 'italic' },
@@ -352,8 +403,21 @@ const styles = StyleSheet.create({
   replyText: { fontSize: 14, color: '#475569', lineHeight: 20 },
   ownerTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#10b981', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 4 },
   ownerTagText: { color: '#ffffff', fontSize: 10, fontWeight: 'bold' },
-  contactRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 12 },
-  contactText: { fontSize: 16, color: '#374151', flex: 1 },
+  contactRow: { 
+    flexDirection: 'row', 
+    alignItems: 'flex-start', // Changed from 'center' to 'flex-start'
+    marginBottom: 12, 
+    gap: 12 
+  },
+  contactIcon: {
+    marginTop: 4, // Nudge the icon down to align with the top of the text
+  },
+  contactText: { 
+    fontSize: 16, 
+    color: '#374151', 
+    flex: 1,
+    lineHeight: 24, // Added line height for better spacing if text wraps
+  },
   actionButtons: { flexDirection: 'row', gap: 12, marginTop: 20 },
   callButton: { flex: 1, borderRadius: 12, overflow: 'hidden' },
   navigateButton: { flex: 1, borderRadius: 12, overflow: 'hidden' },

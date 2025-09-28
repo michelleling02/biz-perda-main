@@ -30,8 +30,6 @@ import Constants from 'expo-constants';
 
 type Item = { id: number; name: string; };
 
-// The 'Place' type is now globally available from the types/google-places.d.ts file.
-
 const GOOGLE_MAPS_API_KEY = Constants.expoConfig?.extra?.googleApiKey;
 
 export default function AddShopScreen() {
@@ -220,12 +218,13 @@ export default function AddShopScreen() {
   };
 
   if (isLoading) {
-    return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color="#32d74b" /></SafeAreaView>;
+    return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color="#E53E3E" /></SafeAreaView>;
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#32d74b', '#30d158']} style={styles.header}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* --- THEME CHANGE 1: Updated header gradient --- */}
+      <LinearGradient colors={['#E53E3E', '#3B82F6']} style={styles.header}>
         <Text style={styles.headerTitle}>Add New Restaurant</Text>
         <Text style={styles.headerSubtitle}>Share your delicious food with the community</Text>
       </LinearGradient>
@@ -368,7 +367,8 @@ export default function AddShopScreen() {
           </View>
 
           <TouchableOpacity style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]} onPress={submitShop} disabled={isSubmitting}>
-            <LinearGradient colors={['#32d74b', '#30d158']} style={styles.submitButtonGradient}>
+            {/* --- THEME CHANGE 2: Updated submit button gradient --- */}
+            <LinearGradient colors={['#E53E3E', '#c4325a']} style={styles.submitButtonGradient}>
               {isSubmitting ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
@@ -446,11 +446,12 @@ export default function AddShopScreen() {
   );
 }
 
+// --- THEME CHANGE 3: All style changes are here ---
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
     header: { paddingHorizontal: 20, paddingVertical: 24 },
     headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#ffffff' },
-    headerSubtitle: { fontSize: 14, color: '#d1fae5', marginTop: 4 },
+    headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.9)', marginTop: 4 },
     formContainer: { flex: 1 },
     form: { flex: 1 },
     section: { paddingHorizontal: 20, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
@@ -469,9 +470,9 @@ const styles = StyleSheet.create({
     bottomSpacing: { height: 40 },
     imageListContainer: { marginBottom: 16, gap: 12 },
     imagePreviewWrapper: { position: 'relative', width: '100%', height: 200, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent' },
-    mainImageWrapper: { borderColor: '#32d74b' },
+    mainImageWrapper: { borderColor: '#E53E3E' }, // Main image border color
     previewImage: { width: '100%', height: '100%' },
-    mainTag: { position: 'absolute', top: 8, left: 8, backgroundColor: '#32d74b', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, zIndex: 1 },
+    mainTag: { position: 'absolute', top: 8, left: 8, backgroundColor: '#E53E3E', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, zIndex: 1 }, // Main tag background
     mainTagText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
     imageActions: { position: 'absolute', bottom: 8, right: 8, flexDirection: 'row', gap: 8 },
     actionButton: { backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
@@ -487,8 +488,8 @@ const styles = StyleSheet.create({
         borderRadius: 20,
     },
     itemSelected: {
-        backgroundColor: '#dcfce7',
-        borderColor: '#22c55e',
+        backgroundColor: '#FEE2E2', // Selected item background (light red)
+        borderColor: '#E53E3E', // Selected item border (red)
     },
     itemText: {
         fontSize: 14,
@@ -496,7 +497,7 @@ const styles = StyleSheet.create({
         color: '#334155',
     },
     itemTextSelected: {
-        color: '#166534',
+        color: '#991B1B', // Selected item text (dark red)
     },
     mapContainer: {
         height: 250,
