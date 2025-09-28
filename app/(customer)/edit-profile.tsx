@@ -1,4 +1,4 @@
-// app/(owner)/edit-profile.tsx
+// app/(customer)/edit-profile.tsx
 
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';

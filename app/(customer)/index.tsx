@@ -41,7 +41,7 @@ export default function CustomerHomeScreen() {
       // Fetch everything in parallel for speed
       const [profileRes, shopsRes, categoriesRes, tagsRes] = await Promise.all([
         supabase.from('profiles').select('name, profile_photo_url').eq('id', session.user.id).single(),
-        supabase.from('public_shops_with_photos').select('*'),
+        supabase.from('public_shops_with_photos').select('*').limit(10),
         supabase.from('categories').select('category_id, name'),
         supabase.from('tags').select('tag_id, tag_name')
       ]);

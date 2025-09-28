@@ -77,21 +77,45 @@ export default function LoginScreen() {
     }
     setIsLoading(true);
 
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: username,
-      password: password,
-    });
+    try {
+      // --- THIS IS THE FIX ---
+      // Step 1: Check the user's profile status BEFORE attempting to log in.
+      // We select from 'profiles' based on the email provided.
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('status')
+        .eq('email', username) // Use the email from the login form
+        .single();
 
-    if (authError) {
+      // If there was an error fetching the profile (other than it not existing), stop.
+      if (profileError && profileError.code !== 'PGRST116') {
+        throw new Error("Could not verify user status. " + profileError.message);
+      }
+
+      // Step 2: If a profile was found and the status is 'Suspended', block the login.
+      if (profile && profile.status === 'Suspended') {
+        throw new Error('Your account is suspended. Please contact support.');
+      }
+      // --- END OF FIX ---
+
+      // Step 3: If the user is not suspended, proceed with the actual login.
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: username,
+        password: password,
+      });
+
+      if (authError) {
+        throw authError; // Let the catch block handle the error message
+      }
+
+      // On success, the useEffect will handle the redirect automatically.
+
+    } catch (error: any) {
+      // A single catch block now handles all errors gracefully.
       setIsLoading(false);
-      Alert.alert('Login Failed', authError.message);
-      return;
+      Alert.alert('Login Failed', error.message);
     }
-
-    // After a successful login, the onAuthStateChange listener in our root layout
-    // will update the 'session' object. This will automatically trigger the
-    // useEffect hook above, which then calls handleRoleRedirect. This is the
-    // standard and safe React pattern.
+    // No need for a finally block if we handle setIsLoading in the catch.
   };
 
   // The JSX for your component is unchanged.

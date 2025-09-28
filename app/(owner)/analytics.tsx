@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BarChart as BarChartIcon, Eye, Heart, Star, Filter, MessageSquare } from 'lucide-react-native';
+import { BarChart as BarChartIcon, Eye, Heart, Star, Filter, MessageSquare, TrendingUp, Camera, Award } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect, router } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
+import Svg, { G, Text as SvgText, Rect } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -11,6 +12,16 @@ import { useAuth } from '../../contexts/AuthContext';
 type OverviewStats = { total_views: number; total_favorites: number; avg_rating: number; total_reviews: number; };
 type EngagementStat = { period_label: string; total_views: number; total_favorites: number; total_reviews: number; };
 type ShopPerformance = { shop_id: number; name: string; total_views: number; total_favorites: number; average_rating: number; };
+
+// --- THIS IS THE FIX ---
+// Define a specific type for our insights to satisfy the LinearGradient component.
+type Insight = {
+  icon: React.ElementType;
+  title: string;
+  text: string;
+  colors: [string, string]; // <-- Guarantees a tuple of two strings
+};
+// --- END OF FIX ---
 
 export default function AnalyticsScreen() {
   const { user } = useAuth();
@@ -40,21 +51,15 @@ export default function AnalyticsScreen() {
           let startDate: Date;
           let endDate: Date;
 
-          // --- THIS IS THE FIX ---
-          // More precise date range calculation to avoid duplicate months.
           if (selectedPeriod === 'year') {
             const currentYear = today.getFullYear();
-            // Start of the year is Jan 1st.
             startDate = new Date(currentYear, 0, 1); 
-            // End of the year is Dec 31st.
             endDate = new Date(currentYear, 11, 31);
           } else if (selectedPeriod === 'month') {
-            // Go back 30 days from today.
             startDate = new Date();
             startDate.setDate(today.getDate() - 29);
             endDate = today;
           } else { // week
-            // Go back 7 days from today.
             startDate = new Date();
             startDate.setDate(today.getDate() - 6);
             endDate = today;
@@ -62,7 +67,6 @@ export default function AnalyticsScreen() {
           
           const startDateStr = startDate.toISOString().split('T')[0];
           const endDateStr = endDate.toISOString().split('T')[0];
-          // --- END OF FIX ---
 
           const [overviewRes, engagementRes, shopPerformanceRes] = await Promise.all([
             supabase.rpc('get_owner_analytics_overview', { p_owner_id: user.id, p_period_days: periodConfig.days }).single(),
@@ -80,7 +84,6 @@ export default function AnalyticsScreen() {
           setShopPerformance(shopPerformanceRes.data as ShopPerformance[]);
 
         } catch (error: any) { 
-          console.error("Error fetching analytics data:", error); 
           Alert.alert("Error", "Could not load analytics data: " + error.message); 
         } finally { 
           setIsLoading(false); 
@@ -90,7 +93,50 @@ export default function AnalyticsScreen() {
     }, [user, selectedPeriod])
   );
 
-  // The rest of the file is unchanged.
+  const generatePersonalizedInsights = (): Insight[] => {
+    const insights: Insight[] = [];
+    if (!overview || !shopPerformance) return [];
+
+    if (overview.avg_rating >= 4.5 && overview.total_reviews > 5) {
+      insights.push({
+        icon: Award,
+        title: 'Excellent Rating!',
+        text: `Congrats! Your average rating of ${overview.avg_rating.toFixed(1)} is fantastic. Keep up the great work!`,
+        colors: ['#facc15', '#eab308'],
+      });
+    }
+
+    const lowViewShop = shopPerformance.sort((a, b) => a.total_views - b.total_views)[0];
+    if (lowViewShop && lowViewShop.total_views < 20) {
+      insights.push({
+        icon: Camera,
+        title: 'Boost Your Views',
+        text: `Your shop "${lowViewShop.name}" has low views. Try adding more high-quality photos to attract customers.`,
+        colors: ['#60a5fa', '#2563eb'],
+      });
+    }
+
+    if (overview.total_favorites > 50) {
+      insights.push({
+        icon: Heart,
+        title: 'Customers Love You!',
+        text: `You have over ${overview.total_favorites} favorites. Consider running a special promotion for your loyal fans.`,
+        colors: ['#f87171', '#dc2626'],
+      });
+    }
+    
+    if (insights.length === 0) {
+      insights.push({
+        icon: TrendingUp,
+        title: 'Stay Consistent',
+        text: 'Keep your shop information and photos updated to attract more customers and improve your visibility.',
+        colors: ['#10b981', '#059669'],
+      });
+    }
+
+    return insights.slice(0, 2);
+  };
+
   const StatCard = ({ icon: Icon, title, value, color }: any) => (
     <View style={styles.statCard}>
       <LinearGradient colors={[color + '20', color + '10']} style={styles.statCardGradient}>
@@ -105,31 +151,46 @@ export default function AnalyticsScreen() {
     if (!data || data.length === 0) {
       return <Text style={styles.emptyChartText}>No data for this period.</Text>;
     }
-
-    const maxTotal = Math.max(...data.map(item => (item.total_views || 0) + (item.total_favorites || 0) + (item.total_reviews || 0)));
-    if (maxTotal === 0) {
-        return <Text style={styles.emptyChartText}>No engagement data for this period.</Text>;
-    }
+    const maxTotal = Math.max(...data.map(item => (item.total_views || 0) + (item.total_favorites || 0) + (item.total_reviews || 0)), 1);
+    const chartWidth = Dimensions.get('window').width - 80;
+    const barWidth = chartWidth / data.length;
 
     return (
       <View style={styles.chartContainer}>
         <Text style={styles.chartTitle}>Engagement ({selectedPeriod})</Text>
         <View style={styles.chart}>
-          {data.map((item, index) => {
-            const total = (item.total_views || 0) + (item.total_favorites || 0) + (item.total_reviews || 0);
-            const barHeight = total > 0 ? (total / maxTotal) * 120 : 0;
+          <Svg height="160" width={chartWidth}>
+            {data.map((item, index) => {
+              const total = (item.total_views || 0) + (item.total_favorites || 0) + (item.total_reviews || 0);
+              const viewsHeight = (item.total_views / maxTotal) * 120;
+              const favsHeight = (item.total_favorites / maxTotal) * 120;
+              const reviewsHeight = (item.total_reviews / maxTotal) * 120;
+              const x = index * barWidth;
 
-            return (
-              <View key={index} style={styles.chartBar}>
-                <View style={[styles.barContainer, { height: barHeight }]}>
-                  <View style={{ flex: item.total_reviews || 0, backgroundColor: '#10b981' }} />
-                  <View style={{ flex: item.total_favorites || 0, backgroundColor: '#ef4444' }} />
-                  <View style={{ flex: item.total_views || 0, backgroundColor: '#0891b2' }} />
-                </View>
-                <Text style={styles.barLabel}>{item.period_label}</Text>
-              </View>
-            );
-          })}
+              return (
+                <G key={index}>
+                  <G x={x + (barWidth - 20) / 2}>
+                    <Rect y={120 - viewsHeight} width={20} height={viewsHeight} fill="#0891b2" rx="4" />
+                    <Rect y={120 - viewsHeight - favsHeight} width={20} height={favsHeight} fill="#ef4444" rx="4" />
+                    <Rect y={120 - viewsHeight - favsHeight - reviewsHeight} width={20} height={reviewsHeight} fill="#10b981" rx="4" />
+                  </G>
+                  <SvgText
+                    x={x + barWidth / 2}
+                    y={135}
+                    fill="#64748b"
+                    fontSize="12"
+                    fontWeight="500"
+                    originX={x + barWidth / 2}
+                    originY={135}
+                    rotation="-45"
+                    textAnchor="middle"
+                  >
+                    {item.period_label}
+                  </SvgText>
+                </G>
+              );
+            })}
+          </Svg>
         </View>
         <View style={styles.chartLegend}>
           <View style={styles.legendItem}><View style={[styles.legendColor, { backgroundColor: '#0891b2' }]} /><Text style={styles.legendText}>Views</Text></View>
@@ -150,6 +211,8 @@ export default function AnalyticsScreen() {
       </View>
     </View>
   );
+
+  const personalizedInsights = generatePersonalizedInsights();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -184,8 +247,17 @@ export default function AnalyticsScreen() {
           </View>
           <View style={styles.insightsSection}>
             <Text style={styles.sectionTitle}>Insights & Tips</Text>
-            <View style={styles.insightCard}><LinearGradient colors={['#10b981', '#059669']} style={styles.insightGradient}><Text style={styles.insightTitle}>📈 Stay Consistent</Text><Text style={styles.insightText}>Keep your shop information and photos updated to attract more customers and improve your visibility.</Text></LinearGradient></View>
-            <View style={styles.insightCard}><LinearGradient colors={['#DC2626', '#3B4ECC']} style={styles.insightGradient}><Text style={styles.insightTitle}>💡 Engage Your Customers</Text><Text style={styles.insightText}>Responding to reviews and running promotions on busy days can significantly boost customer loyalty.</Text></LinearGradient></View>
+            {personalizedInsights.map((insight, index) => (
+              <View key={index} style={styles.insightCard}>
+                <LinearGradient colors={insight.colors} style={styles.insightGradient}>
+                  <insight.icon size={20} color="#ffffff" />
+                  <View style={styles.insightContent}>
+                    <Text style={styles.insightTitle}>{insight.title}</Text>
+                    <Text style={styles.insightText}>{insight.text}</Text>
+                  </View>
+                </LinearGradient>
+              </View>
+            ))}
           </View>
           <View style={styles.bottomSpacing} />
         </ScrollView>
@@ -218,20 +290,9 @@ const styles = StyleSheet.create({
   chartSection: { paddingHorizontal: 20, marginBottom: 24 },
   chartContainer: { backgroundColor: '#ffffff', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3 },
   chartTitle: { fontSize: 16, fontWeight: '600', color: '#1e293b', marginBottom: 16 },
-  chart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', height: 140, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  chartBar: { alignItems: 'center', flex: 1, paddingHorizontal: 4 },
-  barContainer: {
-    width: '100%',
-    minWidth: 20,
-    borderRadius: 4,
-    overflow: 'hidden',
-    backgroundColor: '#f1f5f9',
-    flexDirection: 'column-reverse',
-    marginBottom: 8,
-  },
-  barLabel: { fontSize: 12, color: '#64748b', fontWeight: '500' },
+  chart: { height: 160, width: '100%', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   emptyChartText: { textAlign: 'center', color: '#64748b', fontStyle: 'italic', height: 140, lineHeight: 140 },
-  chartLegend: { flexDirection: 'row', justifyContent: 'center', gap: 16, paddingTop: 8 },
+  chartLegend: { flexDirection: 'row', justifyContent: 'center', gap: 16, paddingTop: 16 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendColor: { width: 10, height: 10, borderRadius: 2 },
   legendText: { fontSize: 12, color: '#64748b' },
@@ -244,8 +305,9 @@ const styles = StyleSheet.create({
   shopStatLabel: { fontSize: 12, color: '#64748b' },
   insightsSection: { paddingHorizontal: 20, marginBottom: 24 },
   insightCard: { borderRadius: 12, overflow: 'hidden', marginBottom: 12 },
-  insightGradient: { padding: 16 },
-  insightTitle: { fontSize: 16, fontWeight: '600', color: '#ffffff', marginBottom: 8 },
+  insightGradient: { padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  insightContent: { flex: 1 },
+  insightTitle: { fontSize: 16, fontWeight: '600', color: '#ffffff', marginBottom: 4 },
   insightText: { fontSize: 14, color: '#ffffff', lineHeight: 20, opacity: 0.9 },
   bottomSpacing: { height: 20 },
 });
